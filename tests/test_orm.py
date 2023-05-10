@@ -1,4 +1,4 @@
-from tests.conftest import TestEntity, SecondEntity
+from tests.conftest import SecondEntity, TestEntity
 
 
 def test_proper_dict_format():

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Type, Union
 
-from xtdb.orm import Base, TYPE_FIELD
+from xtdb.orm import TYPE_FIELD, Base
 
 
 class InvalidField(ValueError):
@@ -77,7 +77,7 @@ class Query:
             return
 
         if type(value) in [int, float, bool]:
-            self._add_where_statement(object_type, field_name, f'{value}')
+            self._add_where_statement(object_type, field_name, f"{value}")
             return
 
         # TODO: support for list, dict and null
@@ -159,5 +159,5 @@ class Query:
     def __str__(self) -> str:
         return self._compile()
 
-    def __eq__(self, other: "Query"):
+    def __eq__(self, other):
         return str(self) == str(other)

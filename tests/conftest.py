@@ -22,8 +22,8 @@ class SecondEntity(Base):
 
 @pytest.fixture
 def xtdb_http_client() -> XTDBHTTPClient:
-    client = XTDBHTTPClient(base_url=os.getenv("XTDB_URI"))
-    client._session.mount("http://", HTTPAdapter(max_retries=Retry(total=3, backoff_factor=1)))
+    client = XTDBHTTPClient(base_url=os.environ["XTDB_URI"])
+    client._session.mount("http://", HTTPAdapter(max_retries=Retry(total=5, backoff_factor=1)))
 
     return client
 

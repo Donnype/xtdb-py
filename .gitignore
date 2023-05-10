@@ -437,4 +437,3 @@ $RECYCLE.BIN/
 **.db
 .env
 dist
-poetry.lock

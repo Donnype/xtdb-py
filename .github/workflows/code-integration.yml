@@ -1,0 +1,37 @@
+name: Code Integration
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Run the test suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run the tests
+        run: make test
+
+  checks:
+    name: Check code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4
+        id: py38
+        with:
+          python-version: 3.8
+          cache: pip
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Checks
+        run: pre-commit run --all --show-diff-on-failure --color always

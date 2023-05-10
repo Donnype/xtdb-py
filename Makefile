@@ -10,6 +10,16 @@ build:
 
 ci-docker-compose := docker compose -f .ci/docker-compose.yml
 
+test: utest itest
+
+check:
+	pre-commit run --all --show-diff-on-failure --color always
+
+utest:
+	$(ci-docker-compose) build
+	$(ci-docker-compose) down
+	$(ci-docker-compose) run --rm xtdb_py_unit
+
 itest:
 	$(ci-docker-compose) build
 	$(ci-docker-compose) down

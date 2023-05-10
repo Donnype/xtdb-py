@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from tests.conftest import TestEntity, SecondEntity
+from tests.conftest import SecondEntity, TestEntity
 from xtdb.orm import XTDBSession
 from xtdb.query import Query
 

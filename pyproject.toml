@@ -22,14 +22,42 @@ readme = "README.md"
 homepage = "https://github.com/Donnype/xtdb-py"
 repository = "https://github.com/Donnype/xtdb-py"
 
-
 [tool.poetry.dependencies]
 python = "^3.8"
 requests = "^2.26.0"
 
-
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.1"
+pre-commit = "^3.2.2"
+
+[tool.black]
+target-version = ["py38"]
+line-length = 120
+
+[tool.vulture]
+min_confidence = 90
+exclude = ["/tests/", "*venv*"]
+paths = ["."]
+
+[tool.ruff]
+# Enable classic flake8, pyflakes, eradicate, and tidyimport
+# To be extended with DJ, PT, RUF, C90, D, PL, RET
+select = ["E", "F", "ERA", "W", "TID", "I", "G", "INP", "T20", "UP", "ISC", "PTH", "SIM", "PLC", "A"]
+# non-pep585-annotation and non-pep604-annotation are not actually compatible with 3.8
+ignore = ["UP006", "UP007", "A003"]
+fix = true
+
+# Same as Black.
+line-length = 120
+
+# Support Python 3.8 and higher
+target-version = "py38"
+
+# Add "Example" to allowed code comments
+task-tags = ["Example", "todo", "TODO", "FIXME"]
+
+[tool.codespell]
+ignore-words-list = 'edn,juxt'
 
 [build-system]
 requires = ["poetry-core"]

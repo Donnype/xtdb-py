@@ -1,13 +1,13 @@
 import json
 import logging
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from http import HTTPStatus
-from typing import List, Optional, Dict, Union, Any, Type
+from typing import Any, Dict, List, Optional, Type, Union
 
-from requests import Session, HTTPError, Response
+from requests import HTTPError, Response, Session
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,12 @@ class XTDBHTTPClient:
         if valid_time is None:
             valid_time = datetime.now(timezone.utc)
 
-        res = self._session.post(f"{self.base_url}/query",params={"valid-time": valid_time.isoformat()},data=query,headers={"Content-Type": "application/edn"},)
+        res = self._session.post(
+            f"{self.base_url}/query",
+            params={"valid-time": valid_time.isoformat()},
+            data=query,
+            headers={"Content-Type": "application/edn"},
+        )
         self._verify_response(res)
         return res.json()
 
