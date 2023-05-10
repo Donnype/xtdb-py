@@ -1,0 +1,2 @@
+XTDB_URI=http://xtdb:3000/_xtdb
+CI=1

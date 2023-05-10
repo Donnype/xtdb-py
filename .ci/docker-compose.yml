@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+
+  xtdb_py_integration:
+    build:
+      context: ..
+    command: pytest tests/integration
+    depends_on:
+      - xtdb
+    env_file:
+      - test-env
+
+  xtdb:
+    entrypoint: ["clojure", "-J-Dlogback.configurationFile=resources/logback.xml", "-M", "-m", "xtdb.main"]
+    healthcheck:
+      test: [ "CMD", "python3", "/home/health_check.py", "http://localhost:3000/_xtdb/status"]
+      interval: 5s
+      retries: 10
+    image: "juxt/xtdb-standalone-rocksdb:1.21.0"
+    restart: on-failure
+    volumes:
+      - ./health_check.py:/home/health_check.py

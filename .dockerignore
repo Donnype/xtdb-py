@@ -1,0 +1,11 @@
+*/.venv
+*/.idea
+*/.pytest_cache
+*/__pycache__
+*/.mypy_cache
+*/.parcel-cache
+*/.git
+*/.github
+*/Dockerfile
+Makefile
+LICENSE
