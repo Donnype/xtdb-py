@@ -21,6 +21,18 @@ class SecondEntity(Base):
     test_entity: TestEntity = field(default_factory=TestEntity)
 
 
+@dataclass
+class ThirdEntity(Base):
+    test_entity: TestEntity = field(default_factory=TestEntity)
+    second_entity: SecondEntity = field(default_factory=SecondEntity)
+
+
+@dataclass
+class FourthEntity(Base):
+    third_entity: ThirdEntity = field(default_factory=ThirdEntity)
+    value: float = field(default_factory=float)
+
+
 @pytest.fixture
 def xtdb_http_client() -> XTDBHTTPClient:
     client = XTDBHTTPClient(base_url=os.environ["XTDB_URI"])

@@ -13,7 +13,7 @@ ci-docker-compose := docker compose -f .ci/docker-compose.yml
 test: utest itest
 
 check:
-	pre-commit run --all --show-diff-on-failure --color always
+	pre-commit run --all --color always
 
 utest:
 	$(ci-docker-compose) build

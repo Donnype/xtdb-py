@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from tests.conftest import SecondEntity, TestEntity
+from tests.conftest import FourthEntity, SecondEntity, TestEntity, ThirdEntity
 from xtdb.query import Query
 from xtdb.session import XTDBSession
 
@@ -39,21 +39,13 @@ def test_query_simple_filter(xtdb_session: XTDBSession):
 
     query = Query(TestEntity).where(TestEntity, name="test")
     result = xtdb_session.client.query(query)
-    assert result == [
-        [
-            {
-                "TestEntity/name": "test",
-                "type": "TestEntity",
-                "xt/id": entity._pk,
-            }
-        ]
-    ]
+    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}]]
 
     xtdb_session.delete(entity)
     xtdb_session.commit()
 
 
-def test_query_not_empty_on_reference_filter_for_hostname(xtdb_session: XTDBSession):
+def test_query_not_empty_on_reference_filter_for_entity(xtdb_session: XTDBSession):
     test = TestEntity(name="test")
     second1 = SecondEntity(test_entity=test, age=1)
     second2 = SecondEntity(test_entity=test, age=2)
@@ -66,27 +58,11 @@ def test_query_not_empty_on_reference_filter_for_hostname(xtdb_session: XTDBSess
     query = Query(TestEntity).where(SecondEntity, age=1).where(SecondEntity, test_entity=TestEntity)
     result = xtdb_session.client.query(query)
 
-    assert result == [
-        [
-            {
-                "TestEntity/name": "test",
-                "type": "TestEntity",
-                "xt/id": test._pk,
-            }
-        ]
-    ]
+    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": test._pk}]]
 
     query = query.where(TestEntity, name="test")
     result = xtdb_session.client.query(query)
-    assert result == [
-        [
-            {
-                "TestEntity/name": "test",
-                "type": "TestEntity",
-                "xt/id": test._pk,
-            }
-        ]
-    ]
+    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": test._pk}]]
 
     xtdb_session.delete(test)
     xtdb_session.delete(second1)
@@ -94,7 +70,48 @@ def test_query_not_empty_on_reference_filter_for_hostname(xtdb_session: XTDBSess
     xtdb_session.commit()
 
 
-def test_query_empty_on_reference_filter_for_wrong_hostname(xtdb_session: XTDBSession):
+def test_deep_query(xtdb_session: XTDBSession):
+    test = TestEntity(name="test")
+    second = SecondEntity(test_entity=test, age=1)
+    second2 = SecondEntity(test_entity=test, age=3)
+    third = ThirdEntity(second_entity=second2, test_entity=test)
+    fourth = FourthEntity(third_entity=third, value=15.3)
+
+    xtdb_session.put(test)
+    xtdb_session.put(second)
+    xtdb_session.put(second2)
+    xtdb_session.put(third)
+    xtdb_session.put(fourth)
+    xtdb_session.commit()
+
+    query = Query(SecondEntity)
+    result = xtdb_session.client.query(query)
+
+    assert len(result) == 2
+    assert [
+        {"SecondEntity/age": 3, "type": "SecondEntity", "xt/id": second2._pk, "SecondEntity/test_entity": test._pk}
+    ] in result
+    assert [
+        {"SecondEntity/age": 1, "type": "SecondEntity", "xt/id": second._pk, "SecondEntity/test_entity": test._pk}
+    ] in result
+
+    query = query.where(FourthEntity, third_entity=ThirdEntity, value=15.3).where(
+        ThirdEntity, second_entity=SecondEntity
+    )
+    result = xtdb_session.client.query(query)
+    assert result == [
+        [{"SecondEntity/age": 3, "type": "SecondEntity", "xt/id": second2._pk, "SecondEntity/test_entity": test._pk}]
+    ]
+
+    xtdb_session.delete(fourth)
+    xtdb_session.delete(third)
+    xtdb_session.delete(second2)
+    xtdb_session.delete(second)
+    xtdb_session.delete(test)
+    xtdb_session.commit()
+
+
+def test_query_empty_on_reference_filter_for_wrong_entity(xtdb_session: XTDBSession):
     test = TestEntity(name="test")
     test2 = TestEntity(name="test2")
     second = SecondEntity(test_entity=test2, age=12)
@@ -107,15 +124,7 @@ def test_query_empty_on_reference_filter_for_wrong_hostname(xtdb_session: XTDBSe
     query = Query(TestEntity).where(TestEntity, name="test").where(SecondEntity, age=12)  # No foreign key
     result = xtdb_session.client.query(query)
 
-    assert result == [
-        [
-            {
-                "TestEntity/name": "test",
-                "type": "TestEntity",
-                "xt/id": test._pk,
-            }
-        ]
-    ]
+    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": test._pk}]]
 
     query = query.where(SecondEntity, test_entity=TestEntity)  # Add foreign key constraint
     assert xtdb_session.client.query(query) == []
