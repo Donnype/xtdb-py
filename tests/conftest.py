@@ -6,7 +6,8 @@ import pytest
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
-from xtdb.orm import Base, XTDBHTTPClient, XTDBSession
+from xtdb.orm import Base
+from xtdb.session import XTDBHTTPClient, XTDBSession
 
 
 @dataclass
