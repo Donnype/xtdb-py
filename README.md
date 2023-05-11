@@ -18,6 +18,7 @@ import os
 from dataclasses import dataclass, field
 
 from xtdb.orm import Base
+from xtdb.query import Query
 from xtdb.session import XTDBHTTPClient, XTDBSession
 
 
