@@ -37,11 +37,11 @@ client = XTDBHTTPClient(os.environ["XTDB_URI"])
 session = XTDBSession(client)
 
 entity = TestEntity(name="test")
-xtdb_session.put(entity)
-xtdb_session.commit()
+session.put(entity)
+session.commit()
 
 query = Query(TestEntity).where(TestEntity, name="test")
-result = xtdb_session.client.query(query)
+result = session.client.query(query)
 
 assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}]]
 ```
