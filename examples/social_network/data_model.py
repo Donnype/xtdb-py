@@ -22,4 +22,3 @@ class User(Base):
     country: Country = field(default_factory=Country)
 
     name: str = field(default_factory=str)
-

@@ -44,7 +44,7 @@ paths = ["."]
 # To be extended with DJ, PT, RUF, C90, D, PL, RET
 select = ["E", "F", "ERA", "W", "TID", "I", "G", "INP", "T20", "UP", "ISC", "PTH", "SIM", "PLC", "A"]
 # non-pep585-annotation and non-pep604-annotation are not actually compatible with 3.8
-ignore = ["UP006", "UP007", "A003"]
+ignore = ["UP006", "UP007", "A003", "T201", "T203"]
 fix = true
 
 # Same as Black.
@@ -57,7 +57,8 @@ target-version = "py38"
 task-tags = ["Example", "todo", "TODO", "FIXME"]
 
 [tool.codespell]
-ignore-words-list = 'edn,juxt'
+ignore-words-list = 'edn,juxt,Nomes'
+skip = '*.csv'
 
 [build-system]
 requires = ["poetry-core"]
