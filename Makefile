@@ -10,10 +10,12 @@ build:
 
 ci-docker-compose := docker compose -f .ci/docker-compose.yml
 
+done: test check
 test: utest itest
 
 check:
 	poetry run pre-commit run --all --color always
+
 
 utest:
 	$(ci-docker-compose) build

@@ -1,13 +1,13 @@
 # XTDB Python
 
-An ORM for XTDB.
+A Python connector and ORM for XTDB.
 
-
+[![Code Integration](https://github.com/Donnype/xtdb-py/actions/workflows/code-integration.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/code-integration.yml)
 
 ## Installation
 
 ```bash
-poetry install
+pip install xtdb
 ```
 
 ## Usage
@@ -43,4 +43,12 @@ query = Query(TestEntity).where(TestEntity, name="test")
 result = session.query(query)
 
 assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}]]
+```
+
+## Development
+
+Using Poetry, simply run:
+
+```bash
+poetry install
 ```
