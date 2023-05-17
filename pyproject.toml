@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "xtdb-py"
+name = "xtdb"
 version = "0.0.1"
 packages = [{ include = "xtdb" }]
 include  = ["xtdb/**"]
@@ -17,7 +17,7 @@ exclude = [
 
 authors = ["Donny Peeters <donny.peeters@hotmail.com>"]
 maintainers = ["Donny Peeters <donny.peeters@hotmail.com>"]
-description = "An ORM for XTDB."
+description = "Python connector and ORM for XTDB."
 readme = "README.md"
 homepage = "https://github.com/Donnype/xtdb-py"
 repository = "https://github.com/Donnype/xtdb-py"

@@ -3,6 +3,7 @@ from tests.conftest import SecondEntity, TestEntity
 
 def test_proper_dict_format():
     entity = TestEntity(name="test")
+
     assert entity.dict() == {
         "xt/id": entity._pk,
         "type": "TestEntity",

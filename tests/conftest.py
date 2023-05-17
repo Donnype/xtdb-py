@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import pytest
@@ -12,25 +12,25 @@ from xtdb.session import XTDBSession
 
 @dataclass
 class TestEntity(Base):
-    name: str = field(default_factory=str)
+    name: str
 
 
 @dataclass
 class SecondEntity(Base):
-    age: int = field(default_factory=int)
-    test_entity: TestEntity = field(default_factory=TestEntity)
+    age: int
+    test_entity: TestEntity
 
 
 @dataclass
 class ThirdEntity(Base):
-    test_entity: TestEntity = field(default_factory=TestEntity)
-    second_entity: SecondEntity = field(default_factory=SecondEntity)
+    test_entity: TestEntity
+    second_entity: SecondEntity
 
 
 @dataclass
 class FourthEntity(Base):
-    third_entity: ThirdEntity = field(default_factory=ThirdEntity)
-    value: float = field(default_factory=float)
+    third_entity: ThirdEntity
+    value: float
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@ import os
 import random
 from pathlib import Path
 
-from data_model import City, Country, User
+from models import City, Country, User
 
 from xtdb.session import XTDBSession
 

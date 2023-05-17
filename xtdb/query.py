@@ -84,7 +84,7 @@ class Query:
         if field_name not in object_type._relations():
             raise InvalidField(f'"{field_name}" is not a relation of {object_type.alias()}')
 
-        if not object_type._concrete:
+        if object_type._subclasses():
             self._add_or_statement(object_type, field_name, value.alias())
             return
 
@@ -115,7 +115,7 @@ class Query:
         return f"[ {from_alias} :{field_type}/{field_name} {to_alias} ]"
 
     def _assert_type(self, object_type: Type[Base]) -> str:
-        if object_type._concrete:
+        if not object_type._subclasses():
             return self._to_type_statement(object_type, object_type)
 
         return f"(or {' '.join([self._to_type_statement(object_type, x) for x in object_type.__subclasses__()])} )"
