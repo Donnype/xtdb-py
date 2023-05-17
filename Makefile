@@ -13,7 +13,7 @@ ci-docker-compose := docker compose -f .ci/docker-compose.yml
 test: utest itest
 
 check:
-	pre-commit run --all --color always
+	poetry run pre-commit run --all --color always
 
 utest:
 	$(ci-docker-compose) build

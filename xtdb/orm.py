@@ -59,6 +59,12 @@ class Operation:
     value: Union[str, Dict[str, Any]]
     valid_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
+    def to_list(self):
+        if self.type is OperationType.MATCH:
+            return [self.type.value, self.value["xt/id"], self.value, self.valid_time.isoformat()]
+
+        return [self.type.value, self.value, self.valid_time.isoformat()]
+
 
 @dataclass
 class Transaction:
@@ -67,8 +73,8 @@ class Transaction:
     def add(self, operation: Operation):
         self.operations.append(operation)
 
-    def json(self):
-        return json.dumps({"tx-ops": [[op.type.value, op.value, op.valid_time.isoformat()] for op in self.operations]})
+    def json(self, **kwargs):
+        return json.dumps({"tx-ops": [op.to_list() for op in self.operations]}, **kwargs)
 
 
 @dataclass

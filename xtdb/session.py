@@ -111,8 +111,10 @@ class XTDBSession:
         self._transaction.add(Operation(type=OperationType.FN, value=document.dict(), valid_time=valid_time))
 
     def commit(self) -> None:
-        if self._transaction:
-            logger.debug(self._transaction)
-            self.client.submit_transaction(self._transaction)
+        if not self._transaction.operations:
+            return
 
-        self._transaction = Transaction()
+        try:
+            self.client.submit_transaction(self._transaction)
+        finally:
+            self._transaction = Transaction()

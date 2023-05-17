@@ -46,6 +46,44 @@ def test_query_simple_filter(xtdb_session: XTDBSession):
     xtdb_session.commit()
 
 
+def test_match(xtdb_session: XTDBSession, valid_time: datetime):
+    entity = TestEntity(name="test")
+    second_entity = TestEntity(name="test2")
+
+    xtdb_session.put(entity)
+    xtdb_session.put(second_entity)
+    xtdb_session.commit()
+
+    query = Query(TestEntity).where(TestEntity, name="test")
+    result = xtdb_session.client.query(query)
+    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}]]
+
+    xtdb_session.delete(entity)
+    xtdb_session.commit()
+
+    third_entity = TestEntity(name="test3")
+
+    xtdb_session.put(third_entity)
+    xtdb_session.match(entity)  # transaction will fail because `entity` is not matched
+    xtdb_session.commit()
+
+    query = Query(TestEntity).where(TestEntity, name="test3")
+    assert xtdb_session.client.query(query) == []
+
+    xtdb_session.put(third_entity)
+    xtdb_session.match(second_entity)  # transaction will succeed because `second_entity` is matched
+    xtdb_session.commit()
+
+    assert xtdb_session.client.query(query) == [
+        [{"TestEntity/name": "test3", "type": "TestEntity", "xt/id": third_entity._pk}]
+    ]
+    assert xtdb_session.client.query(query, valid_time) == []
+
+    xtdb_session.delete(second_entity)
+    xtdb_session.delete(third_entity)
+    xtdb_session.commit()
+
+
 def test_deleted_and_evicted(xtdb_session: XTDBSession, valid_time: datetime):
     entity = TestEntity(name="test")
 
