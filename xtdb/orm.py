@@ -1,10 +1,7 @@
-import json
 import logging
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -43,46 +40,3 @@ class Base:
         result["type"] = self.alias()
 
         return result
-
-
-class OperationType(Enum):
-    PUT = "put"
-    DELETE = "delete"
-    MATCH = "match"
-    EVICT = "evict"
-    FN = "fn"
-
-
-@dataclass
-class Operation:
-    type: OperationType
-    value: Union[str, Dict[str, Any]]
-    valid_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-
-    def to_list(self):
-        if self.type is OperationType.MATCH:
-            return [self.type.value, self.value["xt/id"], self.value, self.valid_time.isoformat()]
-
-        return [self.type.value, self.value, self.valid_time.isoformat()]
-
-
-@dataclass
-class Transaction:
-    operations: List[Operation] = field(default_factory=list)
-
-    def add(self, operation: Operation):
-        self.operations.append(operation)
-
-    def json(self, **kwargs):
-        return json.dumps({"tx-ops": [op.to_list() for op in self.operations]}, **kwargs)
-
-
-@dataclass
-class XTDBStatus:
-    version: Optional[str]
-    revision: Optional[str]
-    indexVersion: Optional[int]
-    consumerState: Optional[str]
-    kvStore: Optional[str]
-    estimateNumKeys: Optional[int]
-    size: Optional[int]
