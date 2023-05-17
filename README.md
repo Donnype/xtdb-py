@@ -24,13 +24,13 @@ from xtdb.session import XTDBSession
 
 @dataclass
 class TestEntity(Base):
-    name: str = field(default_factory=str)
+    name: str
 
 
 @dataclass
 class SecondEntity(Base):
-    age: int = field(default_factory=int)
-    test_entity: TestEntity = field(default_factory=TestEntity)
+    age: int
+    test_entity: TestEntity
 
 
 session = XTDBSession(os.environ["XTDB_URI"])

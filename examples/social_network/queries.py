@@ -1,7 +1,7 @@
 import os
 from pprint import pprint
 
-from data_model import City, Country, User
+from models import City, Country, User
 
 from xtdb.query import Query
 from xtdb.session import XTDBSession
