@@ -102,7 +102,7 @@ class XTDBSession:
         if not valid_time:
             valid_time = datetime.now(timezone.utc)
 
-        self._transaction.add(Operation(type=OperationType.EVICT, value=document.dict(), valid_time=valid_time))
+        self._transaction.add(Operation(type=OperationType.EVICT, value=document._pk, valid_time=valid_time))
 
     def fn(self, document: Base, valid_time: Optional[datetime] = None) -> None:
         if not valid_time:

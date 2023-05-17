@@ -1,15 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Type, Union
 
+from xtdb.exceptions import InvalidField
 from xtdb.orm import TYPE_FIELD, Base
-
-
-class InvalidField(ValueError):
-    pass
-
-
-class InvalidPath(ValueError):
-    pass
 
 
 @dataclass

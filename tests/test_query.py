@@ -48,12 +48,12 @@ def test_invalid_fields_name():
     with pytest.raises(InvalidField) as ctx:
         Query(TestEntity).where(TestEntity, wrong=TestEntity)
 
-    assert ctx.exconly() == 'xtdb.query.InvalidField: "wrong" is not a field of TestEntity'
+    assert ctx.exconly() == 'xtdb.exceptions.InvalidField: "wrong" is not a field of TestEntity'
 
     with pytest.raises(InvalidField) as ctx:
         Query(TestEntity).where(TestEntity, abc="def")
 
-    assert ctx.exconly() == 'xtdb.query.InvalidField: "abc" is not a field of TestEntity'
+    assert ctx.exconly() == 'xtdb.exceptions.InvalidField: "abc" is not a field of TestEntity'
 
 
 def test_escaping_quotes():
@@ -71,12 +71,12 @@ def test_invalid_field_types():
     with pytest.raises(InvalidField) as ctx:
         Query(TestEntity).where(SecondEntity, test=InvalidField)
 
-    assert ctx.exconly() == 'xtdb.query.InvalidField: "test" is not a field of SecondEntity'
+    assert ctx.exconly() == 'xtdb.exceptions.InvalidField: "test" is not a field of SecondEntity'
 
     with pytest.raises(InvalidField) as ctx:
         Query(TestEntity).where(TestEntity, name=TestEntity)
 
-    assert ctx.exconly() == 'xtdb.query.InvalidField: "name" is not a relation of TestEntity'
+    assert ctx.exconly() == 'xtdb.exceptions.InvalidField: "name" is not a relation of TestEntity'
 
 
 def test_allow_string_for_foreign_keys():

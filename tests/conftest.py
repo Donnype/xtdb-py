@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Iterator
 
 import pytest
@@ -31,6 +32,11 @@ class ThirdEntity(Base):
 class FourthEntity(Base):
     third_entity: ThirdEntity = field(default_factory=ThirdEntity)
     value: float = field(default_factory=float)
+
+
+@pytest.fixture
+def valid_time() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 @pytest.fixture

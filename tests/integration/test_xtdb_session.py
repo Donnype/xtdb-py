@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 import pytest
 
@@ -43,6 +44,32 @@ def test_query_simple_filter(xtdb_session: XTDBSession):
 
     xtdb_session.delete(entity)
     xtdb_session.commit()
+
+
+def test_deleted_and_evicted(xtdb_session: XTDBSession, valid_time: datetime):
+    entity = TestEntity(name="test")
+
+    xtdb_session.put(entity, valid_time)
+    xtdb_session.commit()
+
+    xtdb_session.delete(entity)
+    xtdb_session.commit()
+
+    query = Query(TestEntity).where(TestEntity, name="test")
+    result = xtdb_session.client.query(query)
+    assert result == []
+
+    result = xtdb_session.client.query(query, valid_time)
+    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}]]
+
+    xtdb_session.evict(entity)
+    xtdb_session.commit()
+
+    result = xtdb_session.client.query(query)
+    assert result == []
+
+    result = xtdb_session.client.query(query, valid_time)
+    assert result == []
 
 
 def test_query_not_empty_on_reference_filter_for_entity(xtdb_session: XTDBSession):
