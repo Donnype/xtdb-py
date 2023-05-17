@@ -4,7 +4,7 @@ from pathlib import Path
 
 from data_model import City, Country, User
 
-from xtdb.session import XTDBHTTPClient, XTDBSession
+from xtdb.session import XTDBSession
 
 countries = [
     "Andorra",
@@ -208,7 +208,7 @@ cities = [
 
 country_map = {}
 
-xtdb_session = XTDBSession(XTDBHTTPClient(os.environ["XTDB_URI"]))
+xtdb_session = XTDBSession(os.environ["XTDB_URI"])
 
 for country in countries:
     country_entity = Country(name=country)

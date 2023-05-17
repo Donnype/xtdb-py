@@ -1,14 +1,13 @@
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Iterator
 
 import pytest
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
 from xtdb.orm import Base
-from xtdb.session import XTDBHTTPClient, XTDBSession
+from xtdb.session import XTDBSession
 
 
 @dataclass
@@ -40,13 +39,8 @@ def valid_time() -> datetime:
 
 
 @pytest.fixture
-def xtdb_http_client() -> XTDBHTTPClient:
-    client = XTDBHTTPClient(base_url=os.environ["XTDB_URI"])
-    client._session.mount("http://", HTTPAdapter(max_retries=Retry(total=5, backoff_factor=1)))
+def xtdb_session() -> XTDBSession:
+    session = XTDBSession(os.environ["XTDB_URI"])
+    session._client._session.mount("http://", HTTPAdapter(max_retries=Retry(total=5, backoff_factor=1)))
 
-    return client
-
-
-@pytest.fixture
-def xtdb_session(xtdb_http_client: XTDBHTTPClient) -> Iterator[XTDBSession]:
-    yield XTDBSession(xtdb_http_client)
+    return session

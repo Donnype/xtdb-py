@@ -35,6 +35,7 @@ class XTDBHTTPClient:
     def get_entity(self, entity_id: str, valid_time: Optional[datetime] = None) -> dict:
         if valid_time is None:
             valid_time = datetime.now(timezone.utc)
+
         res = self._session.get(
             f"{self.base_url}/entity", params={"eid": entity_id, "valid-time": valid_time.isoformat()}
         )
@@ -70,8 +71,8 @@ class XTDBHTTPClient:
 
 
 class XTDBSession:
-    def __init__(self, client: XTDBHTTPClient):
-        self.client = client
+    def __init__(self, base_url: str):
+        self._client = XTDBHTTPClient(base_url)
         self._transaction = Transaction()
 
     def __enter__(self):
@@ -79,6 +80,12 @@ class XTDBSession:
 
     def __exit__(self, _exc_type: Type[Exception], _exc_value: str, _exc_traceback: str) -> None:
         self.commit()
+
+    def query(self, query: Query, valid_time: Optional[datetime] = None) -> Union[List, Dict]:
+        if valid_time is None:
+            valid_time = datetime.now(timezone.utc)
+
+        return self._client.query(query, valid_time)
 
     def put(self, document: Base, valid_time: Optional[datetime] = None) -> None:
         if not valid_time:
@@ -115,6 +122,6 @@ class XTDBSession:
             return
 
         try:
-            self.client.submit_transaction(self._transaction)
+            self._client.submit_transaction(self._transaction)
         finally:
             self._transaction = Transaction()

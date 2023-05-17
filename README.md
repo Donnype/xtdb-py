@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 from xtdb.orm import Base
 from xtdb.query import Query
-from xtdb.session import XTDBHTTPClient, XTDBSession
+from xtdb.session import XTDBSession
 
 
 @dataclass
@@ -33,15 +33,14 @@ class SecondEntity(Base):
     test_entity: TestEntity = field(default_factory=TestEntity)
 
 
-client = XTDBHTTPClient(os.environ["XTDB_URI"])
-session = XTDBSession(client)
+session = XTDBSession(os.environ["XTDB_URI"])
 
 entity = TestEntity(name="test")
 session.put(entity)
 session.commit()
 
 query = Query(TestEntity).where(TestEntity, name="test")
-result = session.client.query(query)
+result = session.query(query)
 
 assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}]]
 ```
