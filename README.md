@@ -17,7 +17,7 @@ pip install xtdb
 
 ```python3
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from xtdb.orm import Base
 from xtdb.query import Query
@@ -52,10 +52,10 @@ assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt
 ```python3
 import os
 
-from xtdb.session import XTDBHTTPClient, Transaction, Operation
+from xtdb.session import XTDBHTTPClient, Operation
 
 client = XTDBHTTPClient(os.environ["XTDB_URI"])
-client.submit_transaction(Transaction([Operation.put({"xt/id": "123", "name": "fred"})]))
+client.submit_transaction([Operation.put({"xt/id": "123", "name": "fred"})])
 
 client.query('{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}')
 client.get_entity("123")

@@ -126,7 +126,10 @@ class XTDBHTTPClient:
         self._session.get(f"{self.base_url}/await-tx", params={"txId": transaction_id})
         logger.info("Transaction completed [txId=%s]", transaction_id)
 
-    def submit_transaction(self, transaction: Transaction) -> None:
+    def submit_transaction(self, transaction: Union[Transaction, List]) -> None:
+        if isinstance(transaction, list):
+            transaction = Transaction(operations=transaction)
+
         res = self._session.post(
             f"{self.base_url}/submit-tx",
             data=transaction.json(),
