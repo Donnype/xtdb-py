@@ -52,10 +52,10 @@ assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt
 ```python3
 import os
 
-from xtdb.session import XTDBHTTPClient, Transaction, Operation, OperationType
+from xtdb.session import XTDBHTTPClient, Transaction, Operation
 
 client = XTDBHTTPClient(os.environ["XTDB_URI"])
-client.submit_transaction(Transaction(operations=[Operation(OperationType.PUT, {"xt/id": "123", "name": "fred"})]))
+client.submit_transaction(Transaction([Operation.put({"xt/id": "123", "name": "fred"})]))
 
 client.query('{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}')
 client.get_entity("123")

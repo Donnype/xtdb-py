@@ -47,6 +47,22 @@ class Operation:
 
         return [self.type.value, self.value, self.valid_time.isoformat()]
 
+    @classmethod
+    def put(cls, document: Dict, valid_time: datetime) -> "Operation":
+        return cls(OperationType.PUT, document, valid_time)
+
+    @classmethod
+    def delete(cls, pk: str, valid_time: datetime) -> "Operation":
+        return cls(OperationType.DELETE, pk, valid_time)
+
+    @classmethod
+    def match(cls, document: Dict, valid_time: datetime) -> "Operation":
+        return cls(OperationType.MATCH, document, valid_time)
+
+    @classmethod
+    def evict(cls, pk: str, valid_time: datetime) -> "Operation":
+        return cls(OperationType.EVICT, pk, valid_time)
+
 
 @dataclass
 class Transaction:
@@ -143,31 +159,25 @@ class XTDBSession:
         if not valid_time:
             valid_time = datetime.now(timezone.utc)
 
-        self._transaction.add(Operation(type=OperationType.PUT, value=document.dict(), valid_time=valid_time))
+        self._transaction.add(Operation.put(document.dict(), valid_time))
 
     def delete(self, document: Base, valid_time: Optional[datetime] = None) -> None:
         if not valid_time:
             valid_time = datetime.now(timezone.utc)
 
-        self._transaction.add(Operation(type=OperationType.DELETE, value=document._pk, valid_time=valid_time))
+        self._transaction.add(Operation.delete(document._pk, valid_time))
 
     def match(self, document: Base, valid_time: Optional[datetime] = None) -> None:
         if not valid_time:
             valid_time = datetime.now(timezone.utc)
 
-        self._transaction.add(Operation(type=OperationType.MATCH, value=document.dict(), valid_time=valid_time))
+        self._transaction.add(Operation.match(document.dict(), valid_time))
 
     def evict(self, document: Base, valid_time: Optional[datetime] = None) -> None:
         if not valid_time:
             valid_time = datetime.now(timezone.utc)
 
-        self._transaction.add(Operation(type=OperationType.EVICT, value=document._pk, valid_time=valid_time))
-
-    def fn(self, document: Base, valid_time: Optional[datetime] = None) -> None:
-        if not valid_time:
-            valid_time = datetime.now(timezone.utc)
-
-        self._transaction.add(Operation(type=OperationType.FN, value=document.dict(), valid_time=valid_time))
+        self._transaction.add(Operation.evict(document._pk, valid_time))
 
     def commit(self) -> None:
         if not self._transaction.operations:
