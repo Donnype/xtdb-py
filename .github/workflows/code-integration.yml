@@ -43,6 +43,9 @@ jobs:
           - os: macOS
             image: macos-12
       fail-fast: false
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout code
