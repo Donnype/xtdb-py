@@ -93,7 +93,7 @@ class XTDBHTTPClient:
         self._verify_response(res)
         return res.json()
 
-    def query(self, query: Query, valid_time: Optional[datetime] = None) -> Union[List, Dict]:
+    def query(self, query: Union[str, Query], valid_time: Optional[datetime] = None) -> Union[List, Dict]:
         if valid_time is None:
             valid_time = datetime.now(timezone.utc)
 
