@@ -6,6 +6,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Type, Union
 
 from requests import HTTPError, Response, Session
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 
 from xtdb.exceptions import XTDBException
 from xtdb.orm import Base
@@ -60,7 +62,10 @@ class Transaction:
 class XTDBHTTPClient:
     def __init__(self, base_url: str):
         self.base_url = base_url
+
         self._session = Session()
+        self._session.mount("http://", HTTPAdapter(max_retries=Retry(total=6, backoff_factor=0.5)))
+        self._session.mount("https://", HTTPAdapter(max_retries=Retry(total=6, backoff_factor=0.5)))
         self._session.headers["Accept"] = "application/json"
 
     @staticmethod
@@ -127,11 +132,12 @@ class XTDBSession:
     def __exit__(self, _exc_type: Type[Exception], _exc_value: str, _exc_traceback: str) -> None:
         self.commit()
 
-    def query(self, query: Query, valid_time: Optional[datetime] = None) -> Union[List, Dict]:
+    def query(self, query: Query, valid_time: Optional[datetime] = None) -> List[Base]:
         if valid_time is None:
             valid_time = datetime.now(timezone.utc)
 
-        return self._client.query(query, valid_time)
+        result = self._client.query(query, valid_time)
+        return [query.result_type.from_dict(document[0]) for document in result]
 
     def put(self, document: Base, valid_time: Optional[datetime] = None) -> None:
         if not valid_time:

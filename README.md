@@ -42,7 +42,7 @@ session.commit()
 query = Query(TestEntity).where(TestEntity, name="test")
 result = session.query(query)
 
-assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}]]
+assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}
 ```
 
 ## Development

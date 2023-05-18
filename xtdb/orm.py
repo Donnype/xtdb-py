@@ -1,7 +1,7 @@
 import logging
 import uuid
 from dataclasses import asdict, dataclass
-from typing import List, Type
+from typing import Dict, List, Type
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +35,13 @@ class Base:
 
     def dict(self):
         result = {}
-        for key, value in asdict(self).items():
-            if key == "_pk":
-                continue
 
+        for key, value in asdict(self).items():
             if issubclass(self.fields().get(key).type, Base):
-                result[f"{self.alias()}/{key}"] = self.__getattribute__(key)._pk
+                field = self.__getattribute__(key)
+
+                # Foreign keys are not always hydrated
+                result[f"{self.alias()}/{key}"] = field._pk if isinstance(field, Base) else field
             else:
                 result[f"{self.alias()}/{key}"] = value
 
@@ -48,3 +49,16 @@ class Base:
         result["type"] = self.alias()
 
         return result
+
+    @classmethod
+    def from_dict(cls, document: Dict) -> "Base":
+        doc = {key.replace(f"{cls.alias()}/", ""): value for key, value in document.items()}
+        pk = doc["xt/id"]
+
+        del doc["xt/id"]
+        del doc["type"]
+
+        instance = cls(**doc)
+        instance._pk_proxy = pk
+
+        return instance

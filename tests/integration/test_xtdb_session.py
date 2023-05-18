@@ -40,7 +40,7 @@ def test_query_simple_filter(xtdb_session: XTDBSession):
 
     query = Query(TestEntity).where(TestEntity, name="test")
     result = xtdb_session.query(query)
-    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}]]
+    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}
 
     xtdb_session.delete(entity)
     xtdb_session.commit()
@@ -56,7 +56,7 @@ def test_match(xtdb_session: XTDBSession, valid_time: datetime):
 
     query = Query(TestEntity).where(TestEntity, name="test")
     result = xtdb_session.query(query)
-    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}]]
+    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}
 
     xtdb_session.delete(entity)
     xtdb_session.commit()
@@ -74,9 +74,12 @@ def test_match(xtdb_session: XTDBSession, valid_time: datetime):
     xtdb_session.match(second_entity)  # transaction will succeed because `second_entity` is matched
     xtdb_session.commit()
 
-    assert xtdb_session.query(query) == [
-        [{"TestEntity/name": "test3", "type": "TestEntity", "xt/id": third_entity._pk}]
-    ]
+    assert xtdb_session.query(query)[0].dict() == {
+        "TestEntity/name": "test3",
+        "type": "TestEntity",
+        "xt/id": third_entity._pk,
+    }
+
     assert xtdb_session.query(query, valid_time) == []
 
     xtdb_session.delete(second_entity)
@@ -97,8 +100,8 @@ def test_deleted_and_evicted(xtdb_session: XTDBSession, valid_time: datetime):
     result = xtdb_session.query(query)
     assert result == []
 
-    result = xtdb_session.query(query, valid_time)
-    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}]]
+    result = xtdb_session.query(query, valid_time)[0].dict()
+    assert result == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity._pk}
 
     xtdb_session.evict(entity)
     xtdb_session.commit()
@@ -123,11 +126,11 @@ def test_query_not_empty_on_reference_filter_for_entity(xtdb_session: XTDBSessio
     query = Query(TestEntity).where(SecondEntity, age=1).where(SecondEntity, test_entity=TestEntity)
     result = xtdb_session.query(query)
 
-    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": test._pk}]]
+    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": test._pk}
 
     query = query.where(TestEntity, name="test")
     result = xtdb_session.query(query)
-    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": test._pk}]]
+    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": test._pk}
 
     xtdb_session.delete(test)
     xtdb_session.delete(second1)
@@ -153,20 +156,31 @@ def test_deep_query(xtdb_session: XTDBSession):
     result = xtdb_session.query(query)
 
     assert len(result) == 2
-    assert [
-        {"SecondEntity/age": 3, "type": "SecondEntity", "xt/id": second2._pk, "SecondEntity/test_entity": test._pk}
-    ] in result
-    assert [
-        {"SecondEntity/age": 1, "type": "SecondEntity", "xt/id": second._pk, "SecondEntity/test_entity": test._pk}
-    ] in result
+    result = [x.dict() for x in result]
+
+    assert {
+        "SecondEntity/age": 3,
+        "type": "SecondEntity",
+        "xt/id": second2._pk,
+        "SecondEntity/test_entity": test._pk,
+    } in result
+    assert {
+        "SecondEntity/age": 1,
+        "type": "SecondEntity",
+        "xt/id": second._pk,
+        "SecondEntity/test_entity": test._pk,
+    } in result
 
     query = query.where(FourthEntity, third_entity=ThirdEntity, value=15.3).where(
         ThirdEntity, second_entity=SecondEntity
     )
     result = xtdb_session.query(query)
-    assert result == [
-        [{"SecondEntity/age": 3, "type": "SecondEntity", "xt/id": second2._pk, "SecondEntity/test_entity": test._pk}]
-    ]
+    assert result[0].dict() == {
+        "SecondEntity/age": 3,
+        "type": "SecondEntity",
+        "xt/id": second2._pk,
+        "SecondEntity/test_entity": test._pk,
+    }
 
     xtdb_session.delete(fourth)
     xtdb_session.delete(third)
@@ -189,7 +203,7 @@ def test_query_empty_on_reference_filter_for_wrong_entity(xtdb_session: XTDBSess
     query = Query(TestEntity).where(TestEntity, name="test").where(SecondEntity, age=12)  # No foreign key
     result = xtdb_session.query(query)
 
-    assert result == [[{"TestEntity/name": "test", "type": "TestEntity", "xt/id": test._pk}]]
+    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": test._pk}
 
     query = query.where(SecondEntity, test_entity=TestEntity)  # Add foreign key constraint
     assert xtdb_session.query(query) == []
