@@ -18,6 +18,7 @@ jobs:
         uses: JRubics/poetry-publish@v1.16
         with:
           pypi_token: ${{ secrets.TEST_PYPI_TOKEN }}
+          ignore_dev_requirements: "yes"
           repository_name: "testpypi"
           repository_url: "https://test.pypi.org/legacy/"
 
@@ -31,3 +32,4 @@ jobs:
         uses: JRubics/poetry-publish@v1.16
         with:
           pypi_token: ${{ secrets.PYPI_TOKEN }}
+          ignore_dev_requirements: "yes"
