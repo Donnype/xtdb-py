@@ -6,8 +6,30 @@ on:
       - main
 
 jobs:
-  test:
-    name: ${{ matrix.os }} / ${{ matrix.python-version }}
+  integration-tests:
+    name: Integration tests ${{ matrix.python-version }}
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        os: [ Ubuntu ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11" ]
+        include:
+          - os: Ubuntu
+            image: ubuntu-22.04
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build tests image
+        run: docker compose -f .ci/docker-compose.yml build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+
+      - name: Run integration tests
+        run: docker compose -f .ci/docker-compose.yml run xtdb_py_integration
+
+  unit-tests:
+    name: Unit tests ${{ matrix.os }} / ${{ matrix.python-version }}
     runs-on: ${{ matrix.image }}
     strategy:
       matrix:
@@ -26,14 +48,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Build tests image
-        run: docker compose -f .ci/docker-compose.yml build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install requirements
+        run: poetry install --with dev
 
       - name: Run unit tests
-        run: docker compose -f .ci/docker-compose.yml run xtdb_py_unit
-
-      - name: Run unit tests
-        run: docker compose -f .ci/docker-compose.yml run xtdb_py_integration
+        run: poetry run pytest
 
   checks:
     name: Check code
