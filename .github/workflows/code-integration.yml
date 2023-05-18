@@ -7,14 +7,33 @@ on:
 
 jobs:
   test:
-    name: Run the test suite
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / ${{ matrix.python-version }}
+    runs-on: ${{ matrix.image }}
+    strategy:
+      matrix:
+        os: [ Ubuntu, macOS, Windows ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11" ]
+        include:
+          - os: Ubuntu
+            image: ubuntu-22.04
+          - os: Windows
+            image: windows-2022
+          - os: macOS
+            image: macos-12
+      fail-fast: false
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Run the tests
-        run: make test
+      - name: Build tests image
+        run: docker compose -f .ci/docker-compose.yml build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+
+      - name: Run unit tests
+        run: docker compose -f .ci/docker-compose.yml run xtdb_py_unit
+
+      - name: Run unit tests
+        run: docker compose -f .ci/docker-compose.yml run xtdb_py_integration
 
   checks:
     name: Check code
