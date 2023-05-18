@@ -60,7 +60,7 @@ class Query:
 
         return self
 
-    def _where_field_is(self, object_type: Type[Base], field_name: str, value: Union[Type[Base], str]) -> None:
+    def _where_field_is(self, object_type: Type[Base], field_name: str, value: Union[Type[Base], str, None]) -> None:
         if field_name not in object_type.fields():
             raise InvalidField(f'"{field_name}" is not a field of {object_type.alias()}')
 
@@ -73,7 +73,11 @@ class Query:
             self._add_where_statement(object_type, field_name, f"{value}")
             return
 
-        # TODO: support for list, dict and null
+        if value is None:
+            self._add_where_statement(object_type, field_name, "nil")
+            return
+
+        # TODO: support for list, dict
 
         if not isinstance(value, type):
             raise InvalidField(f"value '{value}' should be a string or a Base Type")
