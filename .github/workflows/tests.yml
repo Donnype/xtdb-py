@@ -1,6 +1,7 @@
 name: Code Integration
 
 on:
+  workflow_call:
   push:
     branches:
       - main
