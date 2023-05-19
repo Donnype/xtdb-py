@@ -13,6 +13,12 @@ pip install xtdb
 
 ## Usage
 
+The following examples assume you have set the `XTDB_URI` variable in your environment.
+To start experimenting, you could use the following setup using Docker:
+```bash
+$ docker run -p 3000:3000 -d juxt/xtdb-standalone-rocksdb:1.21.0
+$ export XTDB_URI=http://localhost:3000/_xtdb
+```
 
 ### Using the ORM
 
