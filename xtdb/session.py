@@ -237,6 +237,10 @@ class XTDBSession:
         self.commit()
 
     def query(self, query: Query, **kwargs) -> List[Base]:
+        if not query._preserved_return_type:
+            raise XTDBException(
+                "XTDBSession.query() only supports queries with preserved return types. Use XTDBClient.query() instead."
+            )
         result = self.client.query(query, **kwargs)
 
         return [query.result_type.from_dict(document[0]) for document in result]
@@ -245,27 +249,15 @@ class XTDBSession:
         return self.client.get_entity(eid, **kwargs)
 
     def put(self, document: Base, valid_time: Optional[datetime] = None) -> None:
-        if not valid_time:
-            valid_time = datetime.now(timezone.utc)
-
         self._transaction.add(Operation.put(document.dict(), valid_time))
 
     def delete(self, document: Base, valid_time: Optional[datetime] = None) -> None:
-        if not valid_time:
-            valid_time = datetime.now(timezone.utc)
-
         self._transaction.add(Operation.delete(document.id, valid_time))
 
     def match(self, document: Base, valid_time: Optional[datetime] = None) -> None:
-        if not valid_time:
-            valid_time = datetime.now(timezone.utc)
-
         self._transaction.add(Operation.match(document.dict(), valid_time))
 
     def evict(self, document: Base, valid_time: Optional[datetime] = None) -> None:
-        if not valid_time:
-            valid_time = datetime.now(timezone.utc)
-
         self._transaction.add(Operation.evict(document.id, valid_time))
 
     def fn(self, function: Fn, *args) -> None:

@@ -6,6 +6,11 @@ from xtdb.orm import TYPE_FIELD, Base
 
 
 @dataclass
+class Var:
+    val: str
+
+
+@dataclass
 class Query:
     """Object representing an XTDB query.
 
@@ -30,6 +35,7 @@ class Query:
     _find_clauses: List[str] = field(default_factory=list)
     _limit: Optional[int] = None
     _offset: Optional[int] = None
+    _preserved_return_type: bool = True
 
     def where(self, object_type: Type[Base], **kwargs) -> "Query":
         for field_name, value in kwargs.items():
@@ -40,12 +46,84 @@ class Query:
     def format(self) -> str:
         return self._compile(separator="\n    ")
 
-    def count(self, object_type: Type[Base]) -> "Query":
-        self._find_clauses.append(f"(count {object_type.alias()})")
+    def count(self, var: Union[Type[Base], Var]) -> "Query":
+        self._preserved_return_type = False
+
+        if isinstance(var, Var):
+            self._find_clauses.append(f"(count ?{var.val})")
+            return self
+
+        self._find_clauses.append(f"(count {var.alias()})")
+        return self
+
+    def avg(self, var: Var) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(avg ?{var.val})")
+
+        return self
+
+    def max(self, var: Var) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(max ?{var.val})")
+
+        return self
+
+    def min(self, var: Var) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(min ?{var.val})")
+
+        return self
+
+    def count_distinct(self, var: Var) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(count-distinct ?{var.val})")
+
+        return self
+
+    def sum(self, var: Var) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(sum ?{var.val})")
+
+        return self
+
+    def median(self, var: Var) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(median ?{var.val})")
+
+        return self
+
+    def variance(self, var: Var) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(variance ?{var.val})")
+
+        return self
+
+    def stddev(self, var: Var) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(stddev ?{var.val})")
+
+        return self
+
+    def distinct(self, var: Var) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(distinct ?{var.val})")
+
+        return self
+
+    def rand(self, var: Var, N: int) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(rand {N} ?{var.val})")
+
+        return self
+
+    def sample(self, var: Var, N: int) -> "Query":
+        self._preserved_return_type = False
+        self._find_clauses.append(f"(sample {N} ?{var.val})")
 
         return self
 
     def group_by(self, object_type: Type[Base]) -> "Query":
+        self._preserved_return_type = False
         self._find_clauses.append(f"{object_type.alias()}")
 
         return self
@@ -60,9 +138,15 @@ class Query:
 
         return self
 
-    def _where_field_is(self, object_type: Type[Base], field_name: str, value: Union[Type[Base], str, None]) -> None:
+    def _where_field_is(
+        self, object_type: Type[Base], field_name: str, value: Union[Type[Base], Var, str, None]
+    ) -> None:
         if field_name not in object_type.fields():
             raise InvalidField(f'"{field_name}" is not a field of {object_type.alias()}')
+
+        if isinstance(value, Var):
+            self._add_where_statement(object_type, field_name, f"?{value.val}")
+            return
 
         if isinstance(value, str):
             value = value.replace('"', r"\"")
@@ -127,23 +211,25 @@ class Query:
     def _to_type_statement(self, object_type: Type[Base], other_type: Type[Base]) -> str:
         return f'[ {object_type.alias()} :{TYPE_FIELD} "{other_type.alias()}" ]'
 
-    def _compile_where_clauses(self, *, separator=" ") -> str:
+    def _compile_where_clauses(self, where_clauses: List[str], *, separator=" ") -> str:
         """Sorted and deduplicated where clauses, since they are both idempotent and commutative"""
 
-        return separator + separator.join(sorted(set(self._where_clauses)))
+        return separator + separator.join(sorted(set(where_clauses)))
 
-    def _compile_find_clauses(self) -> str:
-        return " ".join(self._find_clauses)
+    def _compile_find_clauses(self, find_clauses: List[str]) -> str:
+        return " ".join(find_clauses)
 
     def _compile(self, *, separator=" ") -> str:
-        self._where_clauses.append(self._assert_type(self.result_type))
-        where_clauses = self._compile_where_clauses(separator=separator)
+        where_clauses = self._where_clauses
+        where_clauses.append(self._assert_type(self.result_type))
 
         if not self._find_clauses:
-            self._find_clauses = [f"(pull {self.result_type.alias()} [*])"]
+            find_clauses = self._compile_find_clauses([f"(pull {self.result_type.alias()} [*])"])
+        else:
+            find_clauses = self._compile_find_clauses(self._find_clauses)
 
-        find_clauses = self._compile_find_clauses()
-        compiled = f"{{:query {{:find [{find_clauses}] :where [{where_clauses}]"
+        compiled_where_clauses = self._compile_where_clauses(where_clauses, separator=separator)
+        compiled = f"{{:query {{:find [{find_clauses}] :where [{compiled_where_clauses}]"
 
         if self._limit is not None:
             compiled += f" :limit {self._limit}"

@@ -6,7 +6,7 @@ import pytest
 from tests.conftest import FourthEntity, SecondEntity, TestEntity, ThirdEntity
 from xtdb.exceptions import XTDBException
 from xtdb.orm import Fn
-from xtdb.query import Query
+from xtdb.query import Query, Var
 from xtdb.session import XTDBSession
 
 if os.environ.get("CI") != "1":
@@ -149,10 +149,10 @@ def test_query_not_empty_on_reference_filter_for_entity(xtdb_session: XTDBSessio
     xtdb_session.commit()
 
 
-def test_deep_query(xtdb_session: XTDBSession):
+def test_deep_queries(xtdb_session: XTDBSession):
     test = TestEntity(name="test")
     second = SecondEntity(test_entity=test, age=1)
-    second2 = SecondEntity(test_entity=test, age=3)
+    second2 = SecondEntity(test_entity=test, age=4)
     third = ThirdEntity(second_entity=second2, test_entity=test)
     fourth = FourthEntity(third_entity=third, value=15.3)
 
@@ -170,7 +170,7 @@ def test_deep_query(xtdb_session: XTDBSession):
     results = [x.dict() for x in result]
 
     assert {
-        "SecondEntity/age": 3,
+        "SecondEntity/age": 4,
         "type": "SecondEntity",
         "xt/id": second2.id,
         "SecondEntity/test_entity": test.id,
@@ -182,12 +182,18 @@ def test_deep_query(xtdb_session: XTDBSession):
         "SecondEntity/test_entity": test.id,
     } in results
 
-    query = query.where(FourthEntity, third_entity=ThirdEntity, value=15.3).where(
-        ThirdEntity, second_entity=SecondEntity
+    query = Query(SecondEntity).where(SecondEntity, age=Var("age")).avg(Var("age"))
+    avg_result = xtdb_session.client.query(query)
+    assert avg_result == [[2.5]]
+
+    query = (
+        Query(SecondEntity)
+        .where(FourthEntity, third_entity=ThirdEntity, value=15.3)
+        .where(ThirdEntity, second_entity=SecondEntity)
     )
     result = xtdb_session.query(query)
     assert result[0].dict() == {
-        "SecondEntity/age": 3,
+        "SecondEntity/age": 4,
         "type": "SecondEntity",
         "xt/id": second2.id,
         "SecondEntity/test_entity": test.id,
@@ -195,6 +201,57 @@ def test_deep_query(xtdb_session: XTDBSession):
 
     xtdb_session.delete(fourth)
     xtdb_session.delete(third)
+    xtdb_session.delete(second2)
+    xtdb_session.delete(second)
+    xtdb_session.delete(test)
+    xtdb_session.commit()
+
+
+def test_aggregates(xtdb_session: XTDBSession):
+    test = TestEntity(name="test")
+    second = SecondEntity(test_entity=test, age=1)
+    second2 = SecondEntity(test_entity=test, age=4)
+
+    xtdb_session.put(test)
+    xtdb_session.put(second)
+    xtdb_session.put(second2)
+    xtdb_session.commit()
+
+    query = Query(SecondEntity).count(SecondEntity)
+
+    with pytest.raises(XTDBException):
+        xtdb_session.query(query)
+
+    count_result = xtdb_session.client.query(query)
+    assert count_result == [[2]]
+
+    count_result = xtdb_session.client.query(query.count(SecondEntity))
+    assert count_result == [[2, 2]]
+
+    query = Query(SecondEntity).where(SecondEntity, age=Var("age")).avg(Var("age"))
+    avg_result = xtdb_session.client.query(query)
+    assert avg_result == [[2.5]]
+
+    query = Query(SecondEntity).where(SecondEntity, age=Var("age")).sum(Var("age"))
+    sum_result = xtdb_session.client.query(query)
+    assert sum_result == [[5]]
+
+    query = Query(SecondEntity).where(SecondEntity, age=Var("age")).min(Var("age"))
+    min_result = xtdb_session.client.query(query)
+    assert min_result == [[1]]
+
+    query = Query(SecondEntity).where(SecondEntity, age=Var("age")).max(Var("age"))
+    max_result = xtdb_session.client.query(query)
+    assert max_result == [[4]]
+
+    query = Query(SecondEntity).where(SecondEntity, age=Var("age")).median(Var("age"))
+    median_result = xtdb_session.client.query(query)
+    assert median_result == [[2.5]]
+
+    query = Query(SecondEntity).where(SecondEntity, age=Var("age")).variance(Var("age"))
+    variance_result = xtdb_session.client.query(query)
+    assert variance_result == [[2.25]]  # As the average is 2.5, the variance is sqrt((1 - 2.5)^2 * (4 - 2.5)^2) = 2.25
+
     xtdb_session.delete(second2)
     xtdb_session.delete(second)
     xtdb_session.delete(test)
