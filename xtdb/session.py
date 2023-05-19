@@ -88,7 +88,7 @@ class Transaction:
         return json.dumps({"tx-ops": [op.to_list() for op in self.operations]}, **kwargs)
 
 
-class XTDBHTTPClient:
+class XTDBClient:
     def __init__(self, base_url: str):
         self.base_url = base_url
 
@@ -227,7 +227,7 @@ class XTDBHTTPClient:
 
 class XTDBSession:
     def __init__(self, base_url: str):
-        self.client = XTDBHTTPClient(base_url)
+        self.client = XTDBClient(base_url)
         self._transaction = Transaction()
 
     def __enter__(self):
