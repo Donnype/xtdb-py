@@ -1,9 +1,10 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from tests.conftest import FourthEntity, SecondEntity, TestEntity, ThirdEntity
+from xtdb.exceptions import XTDBException
 from xtdb.orm import Fn
 from xtdb.query import Query
 from xtdb.session import XTDBSession
@@ -41,6 +42,15 @@ def test_query_simple_filter(xtdb_session: XTDBSession):
 
     query = Query(TestEntity).where(TestEntity, name="test")
     result = xtdb_session.query(query)
+    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
+
+    result = xtdb_session.query(query, tx_time=datetime.now(timezone.utc) - timedelta(seconds=1))
+    assert result == []
+
+    result = xtdb_session.query(query, tx_id=-1)
+    assert result == []
+
+    result = xtdb_session.query(query, tx_id=0)
     assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
 
     xtdb_session.delete(entity)
@@ -81,7 +91,7 @@ def test_match(xtdb_session: XTDBSession, valid_time: datetime):
         "xt/id": third_entity.id,
     }
 
-    assert xtdb_session.query(query, valid_time) == []
+    assert xtdb_session.query(query, valid_time=valid_time) == []
 
     xtdb_session.delete(second_entity)
     xtdb_session.delete(third_entity)
@@ -101,7 +111,7 @@ def test_deleted_and_evicted(xtdb_session: XTDBSession, valid_time: datetime):
     result = xtdb_session.query(query)
     assert result == []
 
-    result_entity = xtdb_session.query(query, valid_time)[0].dict()
+    result_entity = xtdb_session.query(query, valid_time=valid_time)[0].dict()
     assert result_entity == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
 
     xtdb_session.evict(entity)
@@ -110,7 +120,7 @@ def test_deleted_and_evicted(xtdb_session: XTDBSession, valid_time: datetime):
     result = xtdb_session.query(query)
     assert result == []
 
-    result = xtdb_session.query(query, valid_time)
+    result = xtdb_session.query(query, valid_time=valid_time)
     assert result == []
 
 
@@ -232,6 +242,9 @@ def test_submit_and_trigger_fn(xtdb_session: XTDBSession):
 
     result = xtdb_session.get(second.id)
     assert result["SecondEntity/age"] == 12
+
+    with pytest.raises(XTDBException):
+        xtdb_session.get(second.id, tx_time=datetime.now(timezone.utc) - timedelta(seconds=10))
 
     xtdb_session.fn(increment_age_fn, second.id)
     xtdb_session.commit()

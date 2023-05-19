@@ -112,11 +112,26 @@ class XTDBHTTPClient:
 
         return XTDBStatus(**res.json())
 
-    def get_entity(self, eid: str, valid_time: Optional[datetime] = None) -> Dict:
-        if valid_time is None:
-            valid_time = datetime.now(timezone.utc)
+    def get_entity(
+        self,
+        eid: str,
+        *,
+        valid_time: Optional[datetime] = None,
+        tx_time: Optional[datetime] = None,
+        tx_id: Optional[int] = None,
+    ) -> Dict:
+        params = {"eid": eid}
 
-        res = self._session.get(f"{self.base_url}/entity", params={"eid": eid, "valid-time": valid_time.isoformat()})
+        if valid_time is not None:
+            params["valid-time"] = valid_time.isoformat()
+
+        if tx_time is not None:
+            params["tx-time"] = tx_time.isoformat()
+
+        if tx_id is not None:
+            params["tx-id"] = str(tx_id)
+
+        res = self._session.get(f"{self.base_url}/entity", params=params)
         self._verify_response(res)
         return res.json()
 
@@ -164,13 +179,28 @@ class XTDBHTTPClient:
         self._verify_response(res)
         return res.json()
 
-    def query(self, query: Union[str, Query], valid_time: Optional[datetime] = None) -> Union[List, Dict]:
-        if valid_time is None:
-            valid_time = datetime.now(timezone.utc)
+    def query(
+        self,
+        query: Union[str, Query],
+        *,
+        valid_time: Optional[datetime] = None,
+        tx_time: Optional[datetime] = None,
+        tx_id: Optional[int] = None,
+    ) -> Union[List, Dict]:
+        params = {}
+
+        if valid_time is not None:
+            params["valid-time"] = valid_time.isoformat()
+
+        if tx_time is not None:
+            params["tx-time"] = tx_time.isoformat()
+
+        if tx_id is not None:
+            params["tx-id"] = str(tx_id)
 
         res = self._session.post(
             f"{self.base_url}/query",
-            params={"valid-time": valid_time.isoformat()},
+            params=params,
             data=str(query),
             headers={"Content-Type": "application/edn"},
         )
@@ -206,18 +236,13 @@ class XTDBSession:
     def __exit__(self, _exc_type: Type[Exception], _exc_value: str, _exc_traceback: str) -> None:
         self.commit()
 
-    def query(self, query: Query, valid_time: Optional[datetime] = None) -> List[Base]:
-        if valid_time is None:
-            valid_time = datetime.now(timezone.utc)
+    def query(self, query: Query, **kwargs) -> List[Base]:
+        result = self.client.query(query, **kwargs)
 
-        result = self.client.query(query, valid_time)
         return [query.result_type.from_dict(document[0]) for document in result]
 
-    def get(self, eid: str, valid_time: Optional[datetime] = None) -> Dict:
-        if not valid_time:
-            valid_time = datetime.now(timezone.utc)
-
-        return self.client.get_entity(eid, valid_time)
+    def get(self, eid: str, **kwargs) -> Dict:
+        return self.client.get_entity(eid, **kwargs)
 
     def put(self, document: Base, valid_time: Optional[datetime] = None) -> None:
         if not valid_time:
