@@ -20,7 +20,6 @@ jobs:
       - name: Check version
         run: grep '^version = "${{ github.event.release.tag_name }}"' pyproject.toml
 
-      - uses: actions/checkout@v3
       - name: Build and publish to test pypi
         uses: JRubics/poetry-publish@v1.16
         with:
@@ -29,7 +28,6 @@ jobs:
           repository_name: "testpypi"
           repository_url: "https://test.pypi.org/legacy/"
 
-      - uses: actions/checkout@v3
       - name: Build and publish to pypi
         uses: JRubics/poetry-publish@v1.16
         with:
