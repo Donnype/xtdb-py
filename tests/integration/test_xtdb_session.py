@@ -13,7 +13,7 @@ if os.environ.get("CI") != "1":
 
 
 def test_status(xtdb_session: XTDBSession):
-    result = xtdb_session._client.status()
+    result = xtdb_session.client.status()
     assert result.version == "1.21.0"
     assert result.kvStore == "xtdb.rocksdb.RocksKv"
 
@@ -250,3 +250,45 @@ def test_submit_and_trigger_fn(xtdb_session: XTDBSession):
     xtdb_session.delete(second)
     xtdb_session.delete(increment_age_fn)
     xtdb_session.commit()
+
+
+def test_get_entity_history(xtdb_session: XTDBSession):
+    test = TestEntity(name="test")
+    xtdb_session.put(test, datetime(1000, 10, 10))
+    xtdb_session.commit()
+
+    test.name = "new name"
+    xtdb_session.put(test, datetime(1000, 10, 10))
+    xtdb_session.commit()
+
+    test.name = "new name 2"
+    xtdb_session.put(test, datetime(1000, 10, 11))
+    xtdb_session.commit()
+
+    result = xtdb_session.client.get_entity_history(test.id)
+    assert len(result) == 2
+
+    assert list(result[0].keys()) == ["txTime", "txId", "validTime", "contentHash"]
+    assert list(result[1].keys()) == ["txTime", "txId", "validTime", "contentHash"]
+
+    assert result[0]["validTime"] == "1000-10-10T00:00:00Z"
+    assert result[1]["validTime"] == "1000-10-11T00:00:00Z"
+
+    assert xtdb_session.client.get_entity_history(test.id, sort_order="desc")[1] == result[0]
+
+    assert len(xtdb_session.client.get_entity_history(test.id, start_tx_id=result[1]["txId"])) == 1
+    assert len(xtdb_session.client.get_entity_history(test.id, end_tx_id=result[1]["txId"])) == 1
+    assert len(xtdb_session.client.get_entity_history(test.id, start_valid_time=datetime(1000, 10, 10, 10))) == 1
+    assert len(xtdb_session.client.get_entity_history(test.id, end_valid_time=datetime(1000, 10, 10, 10))) == 1
+
+    result = xtdb_session.client.get_entity_history(test.id, with_docs=True, with_corrections=True)
+    assert len(result) == 3
+
+    assert list(result[0].keys()) == ["txTime", "txId", "validTime", "contentHash", "doc"]
+    assert result[0]["doc"]["xt/id"] == test.id
+    assert result[0]["doc"]["TestEntity/name"] == "test"
+
+    assert result[1]["doc"]["TestEntity/name"] == "new name"
+    assert result[2]["doc"]["TestEntity/name"] == "new name 2"
+
+    xtdb_session.delete(test)

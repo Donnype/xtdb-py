@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 from requests import HTTPError, Response, Session
 from requests.adapters import HTTPAdapter
@@ -120,6 +120,50 @@ class XTDBHTTPClient:
         self._verify_response(res)
         return res.json()
 
+    def get_entity_history(
+        self,
+        eid: str,
+        *,
+        sort_order: Literal["asc", "desc"] = "asc",
+        with_corrections: bool = False,
+        with_docs: bool = False,
+        start_valid_time: Optional[datetime] = None,
+        start_tx_time: Optional[datetime] = None,
+        start_tx_id: Optional[int] = None,
+        end_valid_time: Optional[datetime] = None,
+        end_tx_time: Optional[datetime] = None,
+        end_tx_id: Optional[int] = None,
+    ) -> Dict:
+        params = {
+            "eid": eid,
+            "history": "true",
+            "sortOrder": sort_order,
+            "with-corrections": str(with_corrections).lower(),
+            "with-docs": str(with_docs).lower(),
+        }
+
+        if start_valid_time is not None:
+            params["start-valid-time"] = start_valid_time.isoformat()
+
+        if start_tx_time is not None:
+            params["start-tx-time"] = start_tx_time.isoformat()
+
+        if start_tx_id is not None:
+            params["start-tx-id"] = str(start_tx_id)
+
+        if end_valid_time is not None:
+            params["end-valid-time"] = end_valid_time.isoformat()
+
+        if end_tx_time is not None:
+            params["end-tx-time"] = end_tx_time.isoformat()
+
+        if end_tx_id is not None:
+            params["end-tx-id"] = str(end_tx_id)
+
+        res = self._session.get(f"{self.base_url}/entity", params=params)
+        self._verify_response(res)
+        return res.json()
+
     def query(self, query: Union[str, Query], valid_time: Optional[datetime] = None) -> Union[List, Dict]:
         if valid_time is None:
             valid_time = datetime.now(timezone.utc)
@@ -153,7 +197,7 @@ class XTDBHTTPClient:
 
 class XTDBSession:
     def __init__(self, base_url: str):
-        self._client = XTDBHTTPClient(base_url)
+        self.client = XTDBHTTPClient(base_url)
         self._transaction = Transaction()
 
     def __enter__(self):
@@ -166,14 +210,14 @@ class XTDBSession:
         if valid_time is None:
             valid_time = datetime.now(timezone.utc)
 
-        result = self._client.query(query, valid_time)
+        result = self.client.query(query, valid_time)
         return [query.result_type.from_dict(document[0]) for document in result]
 
     def get(self, eid: str, valid_time: Optional[datetime] = None) -> Dict:
         if not valid_time:
             valid_time = datetime.now(timezone.utc)
 
-        return self._client.get_entity(eid, valid_time)
+        return self.client.get_entity(eid, valid_time)
 
     def put(self, document: Base, valid_time: Optional[datetime] = None) -> None:
         if not valid_time:
@@ -207,6 +251,6 @@ class XTDBSession:
             return
 
         try:
-            self._client.submit_transaction(self._transaction)
+            self.client.submit_transaction(self._transaction)
         finally:
             self._transaction = Transaction()

@@ -41,6 +41,6 @@ def valid_time() -> datetime:
 @pytest.fixture
 def xtdb_session() -> XTDBSession:
     session = XTDBSession(os.environ["XTDB_URI"])
-    session._client._session.mount("http://", HTTPAdapter(max_retries=Retry(total=5, backoff_factor=1)))
+    session.client._session.mount("http://", HTTPAdapter(max_retries=Retry(total=5, backoff_factor=1)))
 
     return session
