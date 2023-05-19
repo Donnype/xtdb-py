@@ -2,7 +2,8 @@
 
 A Python connector and ORM for XTDB.
 
-[![Code Integration](https://github.com/Donnype/xtdb-py/actions/workflows/code-integration.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/code-integration.yml)
+[![Code Integration](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml)
+[![Pypi release](https://github.com/Donnype/xtdb-py/actions/workflows/release.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/release.yml)
 
 ## Installation
 

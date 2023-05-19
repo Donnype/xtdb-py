@@ -77,7 +77,7 @@ class Query:
             self._add_where_statement(object_type, field_name, "nil")
             return
 
-        # TODO: support for list, dict
+        # TODO: support for list and dict?
 
         if not isinstance(value, type):
             raise InvalidField(f"value '{value}' should be a string or a Base Type")

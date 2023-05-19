@@ -13,6 +13,16 @@ jobs:
     needs: [tests]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Bump version
+        run:
+          poetry version ${{ github.event.release.tag_name }}
+          git add pyproject.toml
+          git commit -m "bump version to ${{ github.event.release.tag_name }}"
+          git push
+
       - uses: actions/checkout@v3
       - name: Build and publish to pypi
         uses: JRubics/poetry-publish@v1.16
