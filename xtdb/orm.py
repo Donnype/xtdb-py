@@ -11,7 +11,7 @@ TYPE_FIELD = "type"
 @dataclass
 class Base:
     @property
-    def _pk(self):
+    def id(self):
         if not hasattr(self, "_pk_proxy"):
             self._pk_proxy = str(uuid.uuid4())
 
@@ -33,7 +33,7 @@ class Base:
     def alias(cls):
         return cls.__name__
 
-    def dict(self):
+    def dict(self) -> Dict:
         result = {}
 
         for key, value in asdict(self).items():
@@ -41,11 +41,11 @@ class Base:
                 field = self.__getattribute__(key)
 
                 # Foreign keys are not always hydrated
-                result[f"{self.alias()}/{key}"] = field._pk if isinstance(field, Base) else field
+                result[f"{self.alias()}/{key}"] = field.id if isinstance(field, Base) else field
             else:
                 result[f"{self.alias()}/{key}"] = value
 
-        result["xt/id"] = self._pk
+        result["xt/id"] = self.id
         result["type"] = self.alias()
 
         return result
@@ -62,3 +62,19 @@ class Base:
         instance._pk_proxy = pk
 
         return instance
+
+
+@dataclass
+class Fn(Base):
+    function: str
+    identifier: str
+
+    @property
+    def id(self):
+        return self.identifier
+
+    def dict(self) -> Dict:
+        return {
+            "xt/id": self.identifier,
+            "xt/fn": self.function,
+        }

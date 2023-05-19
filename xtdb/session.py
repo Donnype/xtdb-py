@@ -10,7 +10,7 @@ from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
 from xtdb.exceptions import XTDBException
-from xtdb.orm import Base
+from xtdb.orm import Base, Fn
 from xtdb.query import Query
 
 logger = logging.getLogger(__name__)
@@ -39,29 +39,42 @@ class OperationType(Enum):
 class Operation:
     type: OperationType
     value: Union[str, Dict[str, Any]]
-    valid_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    valid_time: Optional[datetime] = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_list(self):
+        if self.valid_time is None:
+            self.valid_time = datetime.now(timezone.utc)
+
         if self.type is OperationType.MATCH:
             return [self.type.value, self.value["xt/id"], self.value, self.valid_time.isoformat()]
+
+        if self.type is OperationType.FN:
+            return [self.type.value, self.value["identifier"], *self.value["args"]]
+
+        if self.type is OperationType.PUT and "xt/fn" in self.value:
+            return [self.type.value, self.value]
 
         return [self.type.value, self.value, self.valid_time.isoformat()]
 
     @classmethod
-    def put(cls, document: Dict, valid_time: datetime) -> "Operation":
+    def put(cls, document: Dict, valid_time: Optional[datetime] = None) -> "Operation":
         return cls(OperationType.PUT, document, valid_time)
 
     @classmethod
-    def delete(cls, pk: str, valid_time: datetime) -> "Operation":
+    def delete(cls, pk: str, valid_time: Optional[datetime] = None) -> "Operation":
         return cls(OperationType.DELETE, pk, valid_time)
 
     @classmethod
-    def match(cls, document: Dict, valid_time: datetime) -> "Operation":
+    def match(cls, document: Dict, valid_time: Optional[datetime] = None) -> "Operation":
         return cls(OperationType.MATCH, document, valid_time)
 
     @classmethod
-    def evict(cls, pk: str, valid_time: datetime) -> "Operation":
+    def evict(cls, pk: str, valid_time: Optional[datetime] = None) -> "Operation":
         return cls(OperationType.EVICT, pk, valid_time)
+
+    @classmethod
+    def fn(cls, identifier: str, *args) -> "Operation":
+        return cls(OperationType.FN, {"identifier": identifier, "args": args})
 
 
 @dataclass
@@ -99,13 +112,11 @@ class XTDBHTTPClient:
 
         return XTDBStatus(**res.json())
 
-    def get_entity(self, entity_id: str, valid_time: Optional[datetime] = None) -> dict:
+    def get_entity(self, eid: str, valid_time: Optional[datetime] = None) -> Dict:
         if valid_time is None:
             valid_time = datetime.now(timezone.utc)
 
-        res = self._session.get(
-            f"{self.base_url}/entity", params={"eid": entity_id, "valid-time": valid_time.isoformat()}
-        )
+        res = self._session.get(f"{self.base_url}/entity", params={"eid": eid, "valid-time": valid_time.isoformat()})
         self._verify_response(res)
         return res.json()
 
@@ -158,6 +169,12 @@ class XTDBSession:
         result = self._client.query(query, valid_time)
         return [query.result_type.from_dict(document[0]) for document in result]
 
+    def get(self, eid: str, valid_time: Optional[datetime] = None) -> Dict:
+        if not valid_time:
+            valid_time = datetime.now(timezone.utc)
+
+        return self._client.get_entity(eid, valid_time)
+
     def put(self, document: Base, valid_time: Optional[datetime] = None) -> None:
         if not valid_time:
             valid_time = datetime.now(timezone.utc)
@@ -168,7 +185,7 @@ class XTDBSession:
         if not valid_time:
             valid_time = datetime.now(timezone.utc)
 
-        self._transaction.add(Operation.delete(document._pk, valid_time))
+        self._transaction.add(Operation.delete(document.id, valid_time))
 
     def match(self, document: Base, valid_time: Optional[datetime] = None) -> None:
         if not valid_time:
@@ -180,7 +197,10 @@ class XTDBSession:
         if not valid_time:
             valid_time = datetime.now(timezone.utc)
 
-        self._transaction.add(Operation.evict(document._pk, valid_time))
+        self._transaction.add(Operation.evict(document.id, valid_time))
+
+    def fn(self, function: Fn, *args) -> None:
+        self._transaction.add(Operation.fn(function.identifier, *args))
 
     def commit(self) -> None:
         if not self._transaction.operations:

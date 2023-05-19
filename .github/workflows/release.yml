@@ -26,7 +26,7 @@ jobs:
         uses: snok/install-poetry@v1
 
       - name: Bump version
-        run:
+        run: |
           poetry version ${{ github.event.release.tag_name }}
           git add pyproject.toml
           git commit -m "bump version to ${{ github.event.release.tag_name }}"

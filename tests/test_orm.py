@@ -7,7 +7,7 @@ def test_proper_dict_format():
     d = entity.dict()
 
     assert d == {
-        "xt/id": entity._pk,
+        "xt/id": entity.id,
         "type": "TestEntity",
         "TestEntity/name": "test",
     }
@@ -17,10 +17,10 @@ def test_proper_dict_format():
     d2 = entity2.dict()
 
     assert d2 == {
-        "xt/id": entity2._pk,
+        "xt/id": entity2.id,
         "type": "SecondEntity",
-        "SecondEntity/test_entity": entity._pk,
+        "SecondEntity/test_entity": entity.id,
         "SecondEntity/age": 12,
     }
     assert SecondEntity.from_dict(d2).age == entity2.age
-    assert SecondEntity.from_dict(d2).test_entity == entity2.test_entity._pk
+    assert SecondEntity.from_dict(d2).test_entity == entity2.test_entity.id
