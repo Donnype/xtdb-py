@@ -62,6 +62,55 @@ client.query('{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}')
 client.get_entity("123")
 ```
 
+### Using the CLI tool for querying
+
+Using a query string
+```bash
+$ echo '{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}' | python -m xtdb | jq
+[
+  [
+    {
+      "somenil": null,
+      "name": "fred",
+      "somedict": {
+        "c": 3,
+        "a": "b"
+      },
+      "somelist": [
+        "jeez",
+        123
+      ],
+      "xt/id": "123"
+    }
+  ]
+]
+```
+
+or a query in a file:
+
+```bash
+$ cat query.txt
+{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}
+$ python -m xtdb < query.txt | jq
+[
+  [
+    {
+      "somenil": null,
+      "name": "fred",
+      "somedict": {
+        "c": 3,
+        "a": "b"
+      },
+      "somelist": [
+        "jeez",
+        123
+      ],
+      "xt/id": "123"
+    }
+  ]
+]
+```
+
 ## Development
 
 Using Poetry, simply run
