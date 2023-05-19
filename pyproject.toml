@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "xtdb"
-version = "0.0.5"
+version = "0.1.1a"
 packages = [{ include = "xtdb" }]
 include  = ["xtdb/**"]
 exclude = [
