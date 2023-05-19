@@ -4,8 +4,8 @@ A Python connector and ORM for XTDB.
 
 
 [![Code Integration](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml)
-[![Stable Version](https://img.shields.io/pypi/v/xtdb?label=stable)][PyPI Releases]
-[![Python Versions](https://img.shields.io/pypi/pyversions/xtdb)][PyPI]
+[![Stable Version](https://img.shields.io/pypi/v/xtdb?label=stable)](https://pypi.org/project/xtdb/#history)
+[![Python Versions](https://img.shields.io/pypi/pyversions/xtdb)](https://pypi.org/project/xtdb/)
 
 
 ## Installation
