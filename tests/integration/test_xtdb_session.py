@@ -270,7 +270,6 @@ def test_query_empty_on_reference_filter_for_wrong_entity(xtdb_session: XTDBSess
 
     query = Query(TestEntity).where(TestEntity, name="test").where(SecondEntity, age=12)  # No foreign key
     result = xtdb_session.query(query)
-
     assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": test.id}
 
     query = query.where(SecondEntity, test_entity=TestEntity)  # Add foreign key constraint
@@ -360,5 +359,35 @@ def test_get_entity_history(xtdb_session: XTDBSession):
 
     assert result[1]["doc"]["TestEntity/name"] == "new name"
     assert result[2]["doc"]["TestEntity/name"] == "new name 2"
+
+    xtdb_session.delete(test)
+
+
+def test_get_entity_transactions(xtdb_session: XTDBSession):
+    test = TestEntity(name="test")
+
+    xtdb_session.put(test, datetime(1000, 10, 10))
+    xtdb_session.commit()
+
+    test.name = "new name"
+    xtdb_session.put(test, datetime(1000, 10, 10))
+    xtdb_session.commit()
+
+    test.name = "new name 2"
+    xtdb_session.put(test, datetime(1000, 10, 11))
+    xtdb_session.commit()
+
+    result = xtdb_session.client.get_entity_transactions(test.id)
+
+    assert list(result.keys()) == ["id", "contentHash", "validTime", "txTime", "txId"]
+    assert result["validTime"] == "1000-10-11T00:00:00Z"
+
+    result = xtdb_session.client.get_entity_transactions(test.id, tx_id=result["txId"] - 1)
+    assert result["validTime"] == "1000-10-10T00:00:00Z"
+
+    # TODO: check these:
+
+    result = xtdb_session.client.get_entity_transactions(test.id, valid_time=datetime(1000, 10, 10))
+    assert result["validTime"] == "1000-10-10T00:00:00Z"
 
     xtdb_session.delete(test)

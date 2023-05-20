@@ -135,6 +135,29 @@ class XTDBClient:
         self._verify_response(res)
         return res.json()
 
+    def get_entity_transactions(
+        self,
+        eid: str,
+        *,
+        valid_time: Optional[datetime] = None,
+        tx_time: Optional[datetime] = None,
+        tx_id: Optional[int] = None,
+    ) -> Dict:
+        params = {"eid": eid}
+
+        if valid_time is not None:
+            params["valid-time"] = valid_time.isoformat()
+
+        if tx_time is not None:
+            params["tx-time"] = tx_time.isoformat()
+
+        if tx_id is not None:
+            params["tx-id"] = str(tx_id)
+
+        res = self._session.get(f"{self.base_url}/entity-tx", params=params)
+        self._verify_response(res)
+        return res.json()
+
     def get_entity_history(
         self,
         eid: str,
