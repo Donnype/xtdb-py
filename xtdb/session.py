@@ -202,6 +202,23 @@ class XTDBClient:
         self._verify_response(res)
         return res.json()
 
+    def get_attribute_stats(self):
+        res = self._session.get(f"{self.base_url}/attribute-stats")
+        self._verify_response(res)
+
+        return res.json()
+
+    def sync(self, timeout: Optional[int] = None):
+        params = {}
+
+        if timeout is not None:
+            params["timeout"] = timeout
+
+        res = self._session.get(f"{self.base_url}/sync", params=params)
+        self._verify_response(res)
+
+        return res.json()
+
     def query(
         self,
         query: Union[str, Query],
@@ -230,9 +247,35 @@ class XTDBClient:
         self._verify_response(res)
         return res.json()
 
-    def await_transaction(self, transaction_id: int) -> None:
-        self._session.get(f"{self.base_url}/await-tx", params={"txId": transaction_id})
-        logger.info("Transaction completed [txId=%s]", transaction_id)
+    def await_transaction(self, tx_id: int, timeout: Optional[int] = None) -> None:
+        params = {"txId": tx_id}
+
+        if timeout is not None:
+            params["timeout"] = timeout
+
+        self._session.get(f"{self.base_url}/await-tx", params=params)
+
+    def await_transaction_time(self, tx_time: datetime, timeout: Optional[int] = None) -> None:
+        params = {"tx-time": tx_time.isoformat()}
+
+        if timeout is not None:
+            params["timeout"] = str(timeout)
+
+        self._session.get(f"{self.base_url}/await-tx-time", params=params)
+
+    def get_transaction_log(self, after_tx_id: Optional[int] = None, with_ops: Optional[bool] = None):
+        params = {}
+
+        if after_tx_id is not None:
+            params["after-tx-id"] = str(after_tx_id)
+
+        if with_ops is not None:
+            params["with-ops?"] = str(with_ops).lower()
+
+        res = self._session.get(f"{self.base_url}/tx-log", params=params)
+        self._verify_response(res)
+
+        return res.json()
 
     def submit_transaction(self, transaction: Union[Transaction, List]) -> None:
         if isinstance(transaction, list):
@@ -246,6 +289,42 @@ class XTDBClient:
 
         self._verify_response(res)
         self.await_transaction(res.json()["txId"])
+
+    def get_transaction_committed(self, tx_id: int):
+        res = self._session.get(f"{self.base_url}/tx-committed", params={"tx-id": tx_id})
+
+        self._verify_response(res)
+        return res.json()
+
+    def get_latest_completed_transaction(self):
+        res = self._session.get(f"{self.base_url}/latest-completed-tx")
+
+        self._verify_response(res)
+        return res.json()
+
+    def get_latest_submitted_transaction(self):
+        res = self._session.get(f"{self.base_url}/latest-submitted-tx")
+
+        self._verify_response(res)
+        return res.json()
+
+    def get_active_queries(self):
+        res = self._session.get(f"{self.base_url}/active-queries")
+
+        self._verify_response(res)
+        return res.json()
+
+    def get_recent_queries(self):
+        res = self._session.get(f"{self.base_url}/recent-queries")
+
+        self._verify_response(res)
+        return res.json()
+
+    def get_slowest_queries(self):
+        res = self._session.get(f"{self.base_url}/slowest-queries")
+
+        self._verify_response(res)
+        return res.json()
 
 
 class XTDBSession:

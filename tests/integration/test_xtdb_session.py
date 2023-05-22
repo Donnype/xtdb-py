@@ -53,6 +53,8 @@ def test_query_simple_filter(xtdb_session: XTDBSession):
     result = xtdb_session.query(query, tx_id=0)
     assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
 
+    xtdb_session.client.sync()
+
     xtdb_session.delete(entity)
     xtdb_session.commit()
 
@@ -197,6 +199,19 @@ def test_deep_queries(xtdb_session: XTDBSession):
         "type": "SecondEntity",
         "xt/id": second2.id,
         "SecondEntity/test_entity": test.id,
+    }
+
+    attribute_stats = xtdb_session.client.get_attribute_stats()
+    assert attribute_stats == {
+        "FourthEntity/third_entity": 1,
+        "FourthEntity/value": 1,
+        "SecondEntity/age": 4,
+        "SecondEntity/test_entity": 4,
+        "TestEntity/name": 8,
+        "ThirdEntity/second_entity": 1,
+        "ThirdEntity/test_entity": 1,
+        "type": 14,
+        "xt/id": 14,
     }
 
     xtdb_session.delete(fourth)
@@ -385,9 +400,61 @@ def test_get_entity_transactions(xtdb_session: XTDBSession):
     result = xtdb_session.client.get_entity_transactions(test.id, tx_id=result["txId"] - 1)
     assert result["validTime"] == "1000-10-10T00:00:00Z"
 
-    # TODO: check these:
+    # TODO: check transaction time
 
     result = xtdb_session.client.get_entity_transactions(test.id, valid_time=datetime(1000, 10, 10))
     assert result["validTime"] == "1000-10-10T00:00:00Z"
 
     xtdb_session.delete(test)
+
+
+def test_transaction_api(xtdb_session: XTDBSession):
+    test = TestEntity(name="test")
+    second = SecondEntity(test_entity=test, age=1)
+    second2 = SecondEntity(test_entity=test, age=4)
+
+    xtdb_session.put(test)
+    xtdb_session.put(second)
+    xtdb_session.put(second2)
+    xtdb_session.commit()
+
+    result = xtdb_session.client.get_transaction_log()
+    assert len(result) == 28
+    assert list(result[0].keys()) == ["txId", "txTime", "txEvents"]
+
+    result = xtdb_session.client.get_transaction_log(10)
+    assert len(result) == 18
+
+    result = xtdb_session.client.get_transaction_log(10, True)
+    assert len(result) == 18
+    assert list(result[0].keys()) == ["txId", "txTime", "txOps"]
+
+    result = xtdb_session.client.get_transaction_committed(10)
+    assert result == {"txCommitted?": True}
+
+    result = xtdb_session.client.get_latest_completed_transaction()
+    assert result["txId"] == 28
+
+    result = xtdb_session.client.get_latest_submitted_transaction()
+    assert result["txId"] == 28
+
+    result = xtdb_session.client.get_active_queries()
+    assert result == []
+
+    query = Query(SecondEntity).where(SecondEntity, age=1)
+    xtdb_session.query(query)
+
+    result = xtdb_session.client.get_recent_queries()
+    assert result[0]["error"] is None
+    assert (
+        result[0]["query"] == "{:find [(pull SecondEntity [*])], :where [[SecondEntity :SecondEntity/age 1] "
+        '[SecondEntity :type "SecondEntity"]]}'
+    )
+
+    result = xtdb_session.client.get_slowest_queries()
+    assert result == []
+
+    xtdb_session.delete(second2)
+    xtdb_session.delete(second)
+    xtdb_session.delete(test)
+    xtdb_session.commit()
