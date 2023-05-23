@@ -11,19 +11,19 @@ from xtdb.session import XTDBSession
 
 
 @dataclass
-class TestEntity(Base):
+class FirstEntity(Base):
     name: str
 
 
 @dataclass
 class SecondEntity(Base):
     age: int
-    test_entity: TestEntity
+    first_entity: FirstEntity
 
 
 @dataclass
 class ThirdEntity(Base):
-    test_entity: TestEntity
+    first_entity: FirstEntity
     second_entity: SecondEntity
 
 

@@ -1,9 +1,9 @@
 # XTDB Python
 
-A Python connector and ORM for XTDB.
+A Python ORM for XTDB.
 
 
-[![Code Integration](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml)
+[![Tests](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml)
 [![Stable Version](https://img.shields.io/pypi/v/xtdb?label=stable)](https://pypi.org/project/xtdb/#history)
 [![Python Versions](https://img.shields.io/pypi/pyversions/xtdb)](https://pypi.org/project/xtdb/)
 
@@ -119,19 +119,14 @@ $ python -m xtdb < query.txt | jq
 
 ### Installation
 
-To get started with contributing, clone the repo
+To get started, clone the repo and create an environment using Poetry
 ```bash
 $ git clone https://github.com/Donnype/xtdb-py.git
 $ cd xtdb-py
-```
-
-and create a development environment using Poetry, simply run
-
-```bash
 $ poetry install
 ```
 
-Now set up an XTDB instance, for instance using Docker
+Now set up XTDB, for instance using Docker
 ```bash
 $ docker run -p 3000:3000 -d juxt/xtdb-standalone-rocksdb:1.21.0
 ```
@@ -151,4 +146,5 @@ $ make check  # Run all linters
 $ make done   # Run all of the above
 ```
 
-The CI runs these checks as well. Check out the project page for issues and features to work on.
+The CI runs these checks as well.
+Check out the [project page](https://github.com/users/Donnype/projects/1) for issues and features to work on.

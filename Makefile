@@ -19,10 +19,10 @@ check:
 
 utest:
 	$(ci-docker-compose) build
-	$(ci-docker-compose) down
+	$(ci-docker-compose) down --remove-orphans
 	$(ci-docker-compose) run --rm xtdb_py_unit
 
 itest:
 	$(ci-docker-compose) build
-	$(ci-docker-compose) down
+	$(ci-docker-compose) down --remove-orphans
 	$(ci-docker-compose) run --rm xtdb_py_integration

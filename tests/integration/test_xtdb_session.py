@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from tests.conftest import FourthEntity, SecondEntity, TestEntity, ThirdEntity
+from tests.conftest import FirstEntity, FourthEntity, SecondEntity, ThirdEntity
 from xtdb.exceptions import XTDBException
 from xtdb.orm import Fn
 from xtdb.query import Query, Var
@@ -20,29 +20,29 @@ def test_status(xtdb_session: XTDBSession):
 
 
 def test_query_no_results(xtdb_session: XTDBSession):
-    query = Query(TestEntity).where(TestEntity, name="test")
+    query = Query(FirstEntity).where(FirstEntity, name="test")
 
     result = xtdb_session.query(query)
     assert result == []
 
 
 def test_query_simple_filter(xtdb_session: XTDBSession):
-    entity = TestEntity(name="test")
+    entity = FirstEntity(name="test")
     xtdb_session.put(entity)
 
-    query = Query(TestEntity).where(TestEntity, name="test")
+    query = Query(FirstEntity).where(FirstEntity, name="test")
     result = xtdb_session.query(query)
     assert result == []
 
     xtdb_session.commit()
 
-    query = Query(TestEntity).where(TestEntity, name="wrong")
+    query = Query(FirstEntity).where(FirstEntity, name="wrong")
     result = xtdb_session.query(query)
     assert result == []
 
-    query = Query(TestEntity).where(TestEntity, name="test")
+    query = Query(FirstEntity).where(FirstEntity, name="test")
     result = xtdb_session.query(query)
-    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
+    assert result[0].dict() == {"FirstEntity/name": "test", "type": "FirstEntity", "xt/id": entity.id}
 
     result = xtdb_session.query(query, tx_time=datetime.now(timezone.utc) - timedelta(seconds=1))
     assert result == []
@@ -51,7 +51,7 @@ def test_query_simple_filter(xtdb_session: XTDBSession):
     assert result == []
 
     result = xtdb_session.query(query, tx_id=0)
-    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
+    assert result[0].dict() == {"FirstEntity/name": "test", "type": "FirstEntity", "xt/id": entity.id}
 
     xtdb_session.client.sync()
 
@@ -60,27 +60,27 @@ def test_query_simple_filter(xtdb_session: XTDBSession):
 
 
 def test_match(xtdb_session: XTDBSession, valid_time: datetime):
-    entity = TestEntity(name="test")
-    second_entity = TestEntity(name="test2")
+    entity = FirstEntity(name="test")
+    second_entity = FirstEntity(name="test2")
 
     xtdb_session.put(entity)
     xtdb_session.put(second_entity)
     xtdb_session.commit()
 
-    query = Query(TestEntity).where(TestEntity, name="test")
+    query = Query(FirstEntity).where(FirstEntity, name="test")
     result = xtdb_session.query(query)
-    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
+    assert result[0].dict() == {"FirstEntity/name": "test", "type": "FirstEntity", "xt/id": entity.id}
 
     xtdb_session.delete(entity)
     xtdb_session.commit()
 
-    third_entity = TestEntity(name="test3")
+    third_entity = FirstEntity(name="test3")
 
     xtdb_session.put(third_entity)
     xtdb_session.match(entity)  # transaction will fail because `entity` is not matched
     xtdb_session.commit()
 
-    query = Query(TestEntity).where(TestEntity, name="test3")
+    query = Query(FirstEntity).where(FirstEntity, name="test3")
     assert xtdb_session.query(query) == []
 
     xtdb_session.put(third_entity)
@@ -88,8 +88,8 @@ def test_match(xtdb_session: XTDBSession, valid_time: datetime):
     xtdb_session.commit()
 
     assert xtdb_session.query(query)[0].dict() == {
-        "TestEntity/name": "test3",
-        "type": "TestEntity",
+        "FirstEntity/name": "test3",
+        "type": "FirstEntity",
         "xt/id": third_entity.id,
     }
 
@@ -101,7 +101,7 @@ def test_match(xtdb_session: XTDBSession, valid_time: datetime):
 
 
 def test_deleted_and_evicted(xtdb_session: XTDBSession, valid_time: datetime):
-    entity = TestEntity(name="test")
+    entity = FirstEntity(name="test")
 
     xtdb_session.put(entity, valid_time)
     xtdb_session.commit()
@@ -109,12 +109,12 @@ def test_deleted_and_evicted(xtdb_session: XTDBSession, valid_time: datetime):
     xtdb_session.delete(entity)
     xtdb_session.commit()
 
-    query = Query(TestEntity).where(TestEntity, name="test")
+    query = Query(FirstEntity).where(FirstEntity, name="test")
     result = xtdb_session.query(query)
     assert result == []
 
     result_entity = xtdb_session.query(query, valid_time=valid_time)[0].dict()
-    assert result_entity == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
+    assert result_entity == {"FirstEntity/name": "test", "type": "FirstEntity", "xt/id": entity.id}
 
     xtdb_session.evict(entity)
     xtdb_session.commit()
@@ -127,23 +127,23 @@ def test_deleted_and_evicted(xtdb_session: XTDBSession, valid_time: datetime):
 
 
 def test_query_not_empty_on_reference_filter_for_entity(xtdb_session: XTDBSession):
-    test = TestEntity(name="test")
-    second1 = SecondEntity(test_entity=test, age=1)
-    second2 = SecondEntity(test_entity=test, age=2)
+    test = FirstEntity(name="test")
+    second1 = SecondEntity(first_entity=test, age=1)
+    second2 = SecondEntity(first_entity=test, age=2)
 
     xtdb_session.put(test)
     xtdb_session.put(second1)
     xtdb_session.put(second2)
     xtdb_session.commit()
 
-    query = Query(TestEntity).where(SecondEntity, age=1).where(SecondEntity, test_entity=TestEntity)
+    query = Query(FirstEntity).where(SecondEntity, age=1).where(SecondEntity, first_entity=FirstEntity)
     result = xtdb_session.query(query)
 
-    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": test.id}
+    assert result[0].dict() == {"FirstEntity/name": "test", "type": "FirstEntity", "xt/id": test.id}
 
-    query = query.where(TestEntity, name="test")
+    query = query.where(FirstEntity, name="test")
     result = xtdb_session.query(query)
-    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": test.id}
+    assert result[0].dict() == {"FirstEntity/name": "test", "type": "FirstEntity", "xt/id": test.id}
 
     xtdb_session.delete(test)
     xtdb_session.delete(second1)
@@ -152,10 +152,10 @@ def test_query_not_empty_on_reference_filter_for_entity(xtdb_session: XTDBSessio
 
 
 def test_deep_queries(xtdb_session: XTDBSession):
-    test = TestEntity(name="test")
-    second = SecondEntity(test_entity=test, age=1)
-    second2 = SecondEntity(test_entity=test, age=4)
-    third = ThirdEntity(second_entity=second2, test_entity=test)
+    test = FirstEntity(name="test")
+    second = SecondEntity(first_entity=test, age=1)
+    second2 = SecondEntity(first_entity=test, age=4)
+    third = ThirdEntity(second_entity=second2, first_entity=test)
     fourth = FourthEntity(third_entity=third, value=15.3)
 
     xtdb_session.put(test)
@@ -175,13 +175,13 @@ def test_deep_queries(xtdb_session: XTDBSession):
         "SecondEntity/age": 4,
         "type": "SecondEntity",
         "xt/id": second2.id,
-        "SecondEntity/test_entity": test.id,
+        "SecondEntity/first_entity": test.id,
     } in results
     assert {
         "SecondEntity/age": 1,
         "type": "SecondEntity",
         "xt/id": second.id,
-        "SecondEntity/test_entity": test.id,
+        "SecondEntity/first_entity": test.id,
     } in results
 
     query = Query(SecondEntity).where(SecondEntity, age=Var("age")).avg(Var("age"))
@@ -198,7 +198,7 @@ def test_deep_queries(xtdb_session: XTDBSession):
         "SecondEntity/age": 4,
         "type": "SecondEntity",
         "xt/id": second2.id,
-        "SecondEntity/test_entity": test.id,
+        "SecondEntity/first_entity": test.id,
     }
 
     attribute_stats = xtdb_session.client.get_attribute_stats()
@@ -206,10 +206,10 @@ def test_deep_queries(xtdb_session: XTDBSession):
         "FourthEntity/third_entity": 1,
         "FourthEntity/value": 1,
         "SecondEntity/age": 4,
-        "SecondEntity/test_entity": 4,
-        "TestEntity/name": 8,
+        "SecondEntity/first_entity": 4,
+        "FirstEntity/name": 8,
         "ThirdEntity/second_entity": 1,
-        "ThirdEntity/test_entity": 1,
+        "ThirdEntity/first_entity": 1,
         "type": 14,
         "xt/id": 14,
     }
@@ -223,9 +223,9 @@ def test_deep_queries(xtdb_session: XTDBSession):
 
 
 def test_aggregates(xtdb_session: XTDBSession):
-    test = TestEntity(name="test")
-    second = SecondEntity(test_entity=test, age=1)
-    second2 = SecondEntity(test_entity=test, age=4)
+    test = FirstEntity(name="test")
+    second = SecondEntity(first_entity=test, age=1)
+    second2 = SecondEntity(first_entity=test, age=4)
 
     xtdb_session.put(test)
     xtdb_session.put(second)
@@ -274,22 +274,22 @@ def test_aggregates(xtdb_session: XTDBSession):
 
 
 def test_query_empty_on_reference_filter_for_wrong_entity(xtdb_session: XTDBSession):
-    test = TestEntity(name="test")
-    test2 = TestEntity(name="test2")
-    second = SecondEntity(test_entity=test2, age=12)
+    test = FirstEntity(name="test")
+    test2 = FirstEntity(name="test2")
+    second = SecondEntity(first_entity=test2, age=12)
 
     xtdb_session.put(test)
     xtdb_session.put(test2)
     xtdb_session.put(second)
     xtdb_session.commit()
 
-    query = Query(TestEntity).where(TestEntity, name="test").where(SecondEntity, age=12)  # No foreign key
+    query = Query(FirstEntity).where(FirstEntity, name="test").where(SecondEntity, age=12)  # No foreign key
     result = xtdb_session.query(query)
-    assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": test.id}
+    assert result[0].dict() == {"FirstEntity/name": "test", "type": "FirstEntity", "xt/id": test.id}
 
-    query = query.where(SecondEntity, test_entity=TestEntity)  # Add foreign key constraint
+    query = query.where(SecondEntity, first_entity=FirstEntity)  # Add foreign key constraint
     assert xtdb_session.query(query) == []
-    assert len(xtdb_session.query(Query(TestEntity))) == 2
+    assert len(xtdb_session.query(Query(FirstEntity))) == 2
 
     xtdb_session.delete(test)
     xtdb_session.delete(test2)
@@ -298,8 +298,8 @@ def test_query_empty_on_reference_filter_for_wrong_entity(xtdb_session: XTDBSess
 
 
 def test_submit_and_trigger_fn(xtdb_session: XTDBSession):
-    test = TestEntity(name="test")
-    second = SecondEntity(test_entity=test, age=12)
+    test = FirstEntity(name="test")
+    second = SecondEntity(first_entity=test, age=12)
     increment_age_fn = Fn(
         function="(fn [ctx eid] (let [db (xtdb.api/db ctx) entity (xtdb.api/entity db eid)] "
         "[[:xtdb.api/put (update entity :SecondEntity/age inc)]]))",
@@ -337,7 +337,7 @@ def test_submit_and_trigger_fn(xtdb_session: XTDBSession):
 
 
 def test_get_entity_history(xtdb_session: XTDBSession):
-    test = TestEntity(name="test")
+    test = FirstEntity(name="test")
     xtdb_session.put(test, datetime(1000, 10, 10))
     xtdb_session.commit()
 
@@ -370,16 +370,16 @@ def test_get_entity_history(xtdb_session: XTDBSession):
 
     assert list(result[0].keys()) == ["txTime", "txId", "validTime", "contentHash", "doc"]
     assert result[0]["doc"]["xt/id"] == test.id
-    assert result[0]["doc"]["TestEntity/name"] == "test"
+    assert result[0]["doc"]["FirstEntity/name"] == "test"
 
-    assert result[1]["doc"]["TestEntity/name"] == "new name"
-    assert result[2]["doc"]["TestEntity/name"] == "new name 2"
+    assert result[1]["doc"]["FirstEntity/name"] == "new name"
+    assert result[2]["doc"]["FirstEntity/name"] == "new name 2"
 
     xtdb_session.delete(test)
 
 
 def test_get_entity_transactions(xtdb_session: XTDBSession):
-    test = TestEntity(name="test")
+    test = FirstEntity(name="test")
 
     xtdb_session.put(test, datetime(1000, 10, 10))
     xtdb_session.commit()
@@ -409,9 +409,9 @@ def test_get_entity_transactions(xtdb_session: XTDBSession):
 
 
 def test_transaction_api(xtdb_session: XTDBSession):
-    test = TestEntity(name="test")
-    second = SecondEntity(test_entity=test, age=1)
-    second2 = SecondEntity(test_entity=test, age=4)
+    test = FirstEntity(name="test")
+    second = SecondEntity(first_entity=test, age=1)
+    second2 = SecondEntity(first_entity=test, age=4)
 
     xtdb_session.put(test)
     xtdb_session.put(second)
