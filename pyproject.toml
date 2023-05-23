@@ -17,7 +17,7 @@ exclude = [
 
 authors = ["Donny Peeters <donny.peeters@hotmail.com>"]
 maintainers = ["Donny Peeters <donny.peeters@hotmail.com>"]
-description = "A Python connector and ORM for XTDB."
+description = "A Python ORM for XTDB."
 readme = "README.md"
 homepage = "https://github.com/Donnype/xtdb-py"
 repository = "https://github.com/Donnype/xtdb-py"

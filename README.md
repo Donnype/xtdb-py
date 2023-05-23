@@ -23,6 +23,21 @@ $ docker run -p 3000:3000 -d juxt/xtdb-standalone-rocksdb:1.21.0
 $ export XTDB_URI=http://localhost:3000/_xtdb
 ```
 
+### Using the client
+
+```python3
+import os
+
+from xtdb.session import XTDBClient, Operation
+
+client = XTDBClient(os.environ["XTDB_URI"])
+client.submit_transaction([Operation.put({"xt/id": "123", "name": "fred"})])
+
+client.query('{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}')
+client.get_entity("123")
+```
+
+
 ### Using the ORM
 
 ```python3
@@ -57,21 +72,8 @@ result = session.query(query)
 assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
 ```
 
-### Using only the client
 
-```python3
-import os
-
-from xtdb.session import XTDBClient, Operation
-
-client = XTDBClient(os.environ["XTDB_URI"])
-client.submit_transaction([Operation.put({"xt/id": "123", "name": "fred"})])
-
-client.query('{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}')
-client.get_entity("123")
-```
-
-### Using the CLI tool for querying
+### Using the CLI for querying
 
 Using a query string
 ```bash
@@ -79,23 +81,19 @@ $ echo '{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}' | python 
 [
   [
     {
-      "somenil": null,
+      "xt/id": "123"
       "name": "fred",
+      "somenil": null,
       "somedict": {
         "c": 3,
         "a": "b"
       },
-      "somelist": [
-        "jeez",
-        123
-      ],
-      "xt/id": "123"
     }
   ]
 ]
 ```
 
-or a query in a file:
+or a query from a file:
 
 ```bash
 $ cat query.txt
@@ -104,34 +102,53 @@ $ python -m xtdb < query.txt | jq
 [
   [
     {
-      "somenil": null,
+      "xt/id": "123"
       "name": "fred",
+      "somenil": null,
       "somedict": {
         "c": 3,
         "a": "b"
       },
-      "somelist": [
-        "jeez",
-        123
-      ],
-      "xt/id": "123"
     }
   ]
 ]
 ```
 
-## Development
+## Contributing
 
-Using Poetry, simply run
 
+### Installation
+
+To get started with contributing, clone the repo
 ```bash
-poetry install
+$ git clone https://github.com/Donnype/xtdb-py.git
+$ cd xtdb-py
 ```
 
-to create your environment. The `Makefile` has several targets that should make development easier:
+and create a development environment using Poetry, simply run
+
+```bash
+$ poetry install
+```
+
+Now set up an XTDB instance, for instance using Docker
+```bash
+$ docker run -p 3000:3000 -d juxt/xtdb-standalone-rocksdb:1.21.0
+```
+
+Export the XTDB_URI environment variable to be able to use `os.environ["XTDB_URI"]` to fetch the endpoint
+```bash
+$ export XTDB_URI=http://localhost:3000/_xtdb
+```
+
+### Development
+
+The `Makefile` has several targets that should make development easier:
 ```bash
 $ make utest  # Run unit tests
 $ make itest  # Run integration tests
 $ make check  # Run all linters
 $ make done   # Run all of the above
 ```
+
+The CI runs these checks as well. Check out the project page for issues and features to work on.
