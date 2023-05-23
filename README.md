@@ -1,6 +1,4 @@
-# XTDB Python
-
-A Python ORM for XTDB.
+# XTDB Python: A Python ORM for XTDB
 
 
 [![Tests](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml)
@@ -9,6 +7,8 @@ A Python ORM for XTDB.
 
 
 ## Installation
+
+You can install this project using pip:
 
 ```bash
 pip install xtdb
