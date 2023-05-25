@@ -34,8 +34,8 @@ def test_or_clauses():
 
 
 def test_where_or_clauses():
-    statement = Where("a", "b", "c") & Where("1", "2", "3") | Where("x", "y", "z")
-    assert statement.compile() == ":where [(or [ x :y z ]) [ 1 :2 3 ] [ a :b c ]]"
+    statement = Where("a", "b", "c") & Where("1", "2", "3") | Where("x", "y", "z") & Where("9", "8", "7")
+    assert statement.compile() == ":where [(or (and [ 1 :2 3 ] [ a :b c ]) (and [ 9 :8 7 ] [ x :y z ]))]"
 
     statement = Where("a", "b", "c") & (Where("1", "2", "3") | Where("x", "y", "z"))
     assert statement.compile() == ":where [(or [ 1 :2 3 ] [ x :y z ]) [ a :b c ]]"
@@ -44,11 +44,14 @@ def test_where_or_clauses():
     statement = (Where("a", "b", "c") | Where("1", "2", "3")) & Where("x", "y", "z")
     assert statement.compile() == ":where [(or [ 1 :2 3 ] [ a :b c ]) [ x :y z ]]"
 
-    statement = Where("a", "b", "c") | Where("1", "2", "3") & Where("x", "y", "z")
-    assert statement.compile() == ":where [(or [ a :b c ]) [ 1 :2 3 ] [ x :y z ]]"
-
     statement = (Where("a", "b", "c") | Where("1", "2", "3")) & (Where("x", "y", "z") | Where("9", "8", "7"))
     assert statement.compile() == ":where [(or [ 1 :2 3 ] [ a :b c ]) (or [ 9 :8 7 ] [ x :y z ])]"
+
+    with pytest.raises(XTDBException):
+        Where("a", "b", "c") & Where("1", "2", "3") | Where("x", "y", "z")
+
+    with pytest.raises(XTDBException):
+        Where("a", "b", "c") | Where("1", "2", "3") & Where("x", "y", "z")
 
 
 def test_find_clauses():

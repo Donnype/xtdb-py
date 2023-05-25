@@ -27,7 +27,7 @@ class Clause:
 
         return And(self, other)
 
-    def __or__(self, other: "Clause") -> "Clause":
+    def __or__(self, other: "Clause") -> "Or":
         raise NotImplementedError
 
 
@@ -59,7 +59,10 @@ class And(Clause):
         return self.other._collect() + self.clause._collect()
 
     def __or__(self, other: Clause) -> Clause:
-        return And(self, Or(other), self.query_section)
+        if isinstance(other, Where):
+            raise XTDBException("Cannot | on a single where, use & instead")
+
+        return Or(self, other, self.query_section)
 
     def __and__(self, other: Clause) -> Clause:
         if self.query_section != "find" and isinstance(other, Find):
@@ -71,19 +74,41 @@ class And(Clause):
 
 
 class Or(Clause):
-    def __init__(self, clause: Clause):
+    def __init__(self, clause: Clause, other: Clause, query_section: str = "where"):
         super().__init__()
 
         self.clause = clause
+        self.other = other
+        self.query_section = query_section
 
     def compile(self, root: bool = True) -> str:
+        collected = ()
+
+        if isinstance(self.clause, And):
+            collected = collected + (f"(and {self.clause.compile(root=False)})",)
+        else:
+            collected = collected + (self.clause.compile(root=False),)
+
+        if isinstance(self.other, And):
+            collected = collected + (f"(and {self.other.compile(root=False)})",)
+        else:
+            collected = collected + (self.other.compile(root=False),)
+
+        if self.clause.idempotent() and self.other.idempotent():
+            collected = tuple(set(collected))
+
+        if self.clause.commutative() and self.other.commutative():
+            expression = " ".join(sorted(collected))
+        else:
+            expression = " ".join(reversed(collected))
+
         if root:
-            return f":where [(or {self.clause.compile(root=False)})]"
+            return f":where [(or {expression})]"
 
-        return f"(or {self.clause.compile(root=False)})"
+        return f"(or {expression})"
 
-    def __or__(self, other: Clause) -> Clause:
-        return Or(And(self.clause, other))
+    def __or__(self, other: Clause) -> "Or":
+        return Or(self, other, self.query_section)
 
 
 class Where(Clause):
@@ -100,11 +125,11 @@ class Where(Clause):
 
         return f"[ {self.document} :{self.field} {self.value} ]"
 
-    def __or__(self, other: Clause) -> Clause:
+    def __or__(self, other: Clause) -> Or:
         if isinstance(other, And):
-            return And(Or(self), other)
+            raise XTDBException("Cannot | on a single where, use & instead")
 
-        return Or(And(self, other))
+        return Or(self, other)
 
 
 class Expression:
