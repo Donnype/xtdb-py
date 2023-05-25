@@ -1,4 +1,7 @@
-from xtdb.datalog import Where
+import pytest
+
+from xtdb.datalog import Expression, Find, Where
+from xtdb.exceptions import XTDBException
 
 
 def test_where_clauses():
@@ -46,3 +49,19 @@ def test_where_or_clauses():
 
     statement = (Where("a", "b", "c") | Where("1", "2", "3")) & (Where("x", "y", "z") | Where("9", "8", "7"))
     assert statement.compile() == "(or [ 1 :2 3 ] [ a :b c ]) (or [ 9 :8 7 ] [ x :y z ])"
+
+
+def test_find_clauses():
+    statement = Find("a")
+    assert statement.compile() == "a"
+
+    statement = Find("a") & Find("b")
+    assert statement.compile() == "a b"
+
+    statement = Find("pull(*)") & Find("b") & Find(Expression("(sum ?heads)"))
+    assert statement.compile() == "pull(*) b (sum ?heads)"
+
+    with pytest.raises(XTDBException) as ctx:
+        Find("pull(*)") | Find("b")
+
+    assert ctx.exconly() == "xtdb.exceptions.XTDBException: Or operator is not supported for find clauses"

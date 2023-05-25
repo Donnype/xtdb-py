@@ -1,12 +1,22 @@
-from typing import Any
+from typing import Any, Tuple, Union
+
+from xtdb.exceptions import XTDBException
 
 
 class Clause:
+    @classmethod
+    def commutative(cls):
+        return True
+
+    @classmethod
+    def idempotent(cls):
+        return True
+
     def compile(self) -> str:
         raise NotImplementedError
 
-    def _collect(self) -> set:
-        return {self.compile()}
+    def _collect(self) -> Tuple:
+        return (self.compile(),)
 
     def __str__(self) -> str:
         return self.compile()
@@ -20,14 +30,24 @@ class Clause:
 
 class And(Clause):
     def __init__(self, clause: Clause, other: Clause):
+        super().__init__()
+
         self.clause = clause
         self.other = other
 
     def compile(self) -> str:
-        return " ".join(sorted(self._collect()))
+        collected = self._collect()
 
-    def _collect(self) -> set:
-        return self.clause._collect().union(self.other._collect())
+        if self.clause.idempotent() and self.other.idempotent():
+            collected = tuple(set(collected))
+
+        if self.clause.commutative() and self.other.commutative():
+            return " ".join(sorted(collected))
+
+        return " ".join(reversed(collected))
+
+    def _collect(self) -> Tuple:
+        return self.other._collect() + self.clause._collect()
 
     def __or__(self, other: Clause) -> Clause:
         return And(self, Or(other))
@@ -35,6 +55,8 @@ class And(Clause):
 
 class Or(Clause):
     def __init__(self, clause: Clause):
+        super().__init__()
+
         self.clause = clause
 
     def compile(self) -> str:
@@ -46,6 +68,8 @@ class Or(Clause):
 
 class Where(Clause):
     def __init__(self, document: str, field: str, value: Any):
+        super().__init__()
+
         self.document = document
         self.field = field
         self.value = value
@@ -58,3 +82,30 @@ class Where(Clause):
             return And(Or(self), other)
 
         return Or(And(self, other))
+
+
+class Expression:
+    def __init__(self, statement: str):
+        self.statement = statement
+
+    def __str__(self):
+        return self.statement
+
+
+class Find(Clause):
+    def __init__(self, expression: Union[str, Expression]):
+        self.expression = expression
+
+    @classmethod
+    def commutative(cls):
+        return False
+
+    @classmethod
+    def idempotent(cls):
+        return False
+
+    def compile(self) -> str:
+        return str(self.expression)
+
+    def __or__(self, other: Clause) -> Clause:
+        raise XTDBException("Or operator is not supported for find clauses")
