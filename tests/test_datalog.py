@@ -1,6 +1,6 @@
 import pytest
 
-from xtdb.datalog import Expression, Find, Where
+from xtdb.datalog import Aggregate, Expression, Find, Where
 from xtdb.exceptions import XTDBException
 
 
@@ -65,3 +65,21 @@ def test_find_clauses():
         Find("pull(*)") | Find("b")
 
     assert ctx.exconly() == "xtdb.exceptions.XTDBException: Or operator is not supported for find clauses"
+
+
+def test_aggregates():
+    statement = Find("a") & Find(Aggregate("sum", "field"))
+    assert statement.compile() == "a (sum field)"
+
+    statement = Find("a") & Find(Aggregate("sample", "field", "12"))
+    assert statement.compile() == "a (sample 12 field)"
+
+    with pytest.raises(XTDBException) as ctx:
+        Find("a") & Find(Aggregate("wrong", "field"))
+
+    assert ctx.exconly() == "xtdb.exceptions.XTDBException: Invalid aggregate function"
+
+    with pytest.raises(XTDBException) as ctx:
+        Find("a") & Find(Aggregate("rand", "field"))
+
+    assert ctx.exconly() == "xtdb.exceptions.XTDBException: Invalid arguments to aggregate function, needs: ('N',)"

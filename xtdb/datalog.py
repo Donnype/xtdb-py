@@ -92,6 +92,38 @@ class Expression:
         return self.statement
 
 
+class Aggregate(Expression):
+    supported_aggregates = {
+        "sum": (),
+        "min": (),
+        "max": (),
+        "count": (),
+        "avg": (),
+        "median": (),
+        "variance": (),
+        "stddev": (),
+        "rand": ("N",),
+        "sample": ("N",),
+        "distinct": (),
+    }
+
+    def __init__(self, function: str, expression: str, *args):
+        if function not in self.supported_aggregates:
+            raise XTDBException("Invalid aggregate function")
+
+        if len(self.supported_aggregates[function]) != len(args):
+            raise XTDBException(
+                f"Invalid arguments to aggregate function, needs: {self.supported_aggregates[function]}",
+            )
+
+        if self.supported_aggregates[function]:
+            statement = f"({function} {' '.join(args)} {expression})"
+        else:
+            statement = f"({function} {expression})"
+
+        super().__init__(statement)
+
+
 class Find(Clause):
     def __init__(self, expression: Union[str, Expression]):
         self.expression = expression
