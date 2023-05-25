@@ -113,11 +113,11 @@ def test_find_where():
         Find("a")
         & Sample("field", 12)
         & Sum("field")
-        & (Where("a", "b", "c") | Where("1", "2", "3") & Where("x", "y", "z"))
+        & ((Where("a", "b", "c") | Where("1", "2", "3")) & Where("x", "y", "z"))
     )
     assert (
         statement.compile()
-        == "{:find [a (sample 12 field) (sum field)] :where [(or [ a :b c ]) [ 1 :2 3 ] [ x :y z ]]}"
+        == "{:find [a (sample 12 field) (sum field)] :where [(or [ 1 :2 3 ] [ a :b c ]) [ x :y z ]]}"
     )
 
     with pytest.raises(XTDBException):

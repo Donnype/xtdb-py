@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Union
+from typing import Any, List, Union
 
 from xtdb.exceptions import XTDBException
 
@@ -15,8 +15,8 @@ class Clause:
     def compile(self, root: bool = True) -> str:
         raise NotImplementedError
 
-    def _collect(self) -> Tuple:
-        return (self.compile(root=False),)
+    def _collect(self) -> List:
+        return [self.compile(root=False)]
 
     def __str__(self) -> str:
         return self.compile()
@@ -25,82 +25,82 @@ class Clause:
         if isinstance(other, Find):
             raise XTDBException("Cannot perform a where-find. User find-where instead.")
 
-        return And(self, other)
+        return And([self, other])
 
     def __or__(self, other: "Clause") -> "Or":
         raise NotImplementedError
 
 
 class And(Clause):
-    def __init__(self, clause: Clause, other: Clause, query_section: str = "where"):
+    def __init__(self, clauses: List[Clause], query_section: str = "where"):
         super().__init__()
 
-        self.clause = clause
-        self.other = other
+        self.clauses = clauses
         self.query_section = query_section
 
     def compile(self, root: bool = True) -> str:
         collected = self._collect()
 
-        if self.clause.idempotent() and self.other.idempotent():
-            collected = tuple(set(collected))
+        if all(clause.idempotent() for clause in self.clauses):
+            collected = list(set(collected))
 
-        if self.clause.commutative() and self.other.commutative():
+        if all(clause.commutative() for clause in self.clauses):
             expression = " ".join(sorted(collected))
         else:
-            expression = " ".join(reversed(collected))
+            expression = " ".join(collected)
 
         if root:
             return f":{self.query_section} [{expression}]"
 
         return expression
 
-    def _collect(self) -> Tuple:
-        return self.other._collect() + self.clause._collect()
+    def _collect(self) -> List:
+        collected = []
 
-    def __or__(self, other: Clause) -> Clause:
+        for clause in self.clauses:
+            collected.extend(clause._collect())
+
+        return collected
+
+    def __or__(self, other: Clause) -> "Or":
         if isinstance(other, Where):
             raise XTDBException("Cannot | on a single where, use & instead")
 
-        return Or(self, other, self.query_section)
+        return Or([self, other], self.query_section)
 
     def __and__(self, other: Clause) -> Clause:
         if self.query_section != "find" and isinstance(other, Find):
             raise XTDBException("Cannot perform a where-find. User find-where instead.")
+
         elif isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
 
-        return And(self, other, self.query_section)
+        return And(self.clauses + [other], self.query_section)
 
 
 class Or(Clause):
-    def __init__(self, clause: Clause, other: Clause, query_section: str = "where"):
+    def __init__(self, clauses: List[Clause], query_section: str = "where"):
         super().__init__()
 
-        self.clause = clause
-        self.other = other
+        self.clauses = clauses
         self.query_section = query_section
 
     def compile(self, root: bool = True) -> str:
-        collected = ()
+        collected = []
 
-        if isinstance(self.clause, And):
-            collected = collected + (f"(and {self.clause.compile(root=False)})",)
-        else:
-            collected = collected + (self.clause.compile(root=False),)
+        for clause in self.clauses:
+            if isinstance(clause, And):
+                collected.append(f"(and {clause.compile(root=False)})")
+            else:
+                collected.append(clause.compile(root=False))
 
-        if isinstance(self.other, And):
-            collected = collected + (f"(and {self.other.compile(root=False)})",)
-        else:
-            collected = collected + (self.other.compile(root=False),)
+        if all(clause.idempotent() for clause in self.clauses):
+            collected = list(set(collected))
 
-        if self.clause.idempotent() and self.other.idempotent():
-            collected = tuple(set(collected))
-
-        if self.clause.commutative() and self.other.commutative():
+        if all(clause.commutative() for clause in self.clauses):
             expression = " ".join(sorted(collected))
         else:
-            expression = " ".join(reversed(collected))
+            expression = " ".join(collected)
 
         if root:
             return f":where [(or {expression})]"
@@ -108,7 +108,7 @@ class Or(Clause):
         return f"(or {expression})"
 
     def __or__(self, other: Clause) -> "Or":
-        return Or(self, other, self.query_section)
+        return Or(self.clauses + [other], self.query_section)
 
 
 class Where(Clause):
@@ -129,7 +129,7 @@ class Where(Clause):
         if isinstance(other, And):
             raise XTDBException("Cannot | on a single where, use & instead")
 
-        return Or(self, other)
+        return Or([self, other])
 
 
 class Expression:
@@ -190,7 +190,7 @@ class Find(Clause):
 
         return str(self.expression)
 
-    def __or__(self, other: Clause) -> Clause:
+    def __or__(self, other: Clause) -> Or:
         raise XTDBException("Or operator is not supported for find clauses")
 
     def __and__(self, other: Clause) -> Clause:
@@ -200,7 +200,7 @@ class Find(Clause):
         if isinstance(other, Where):
             return FindWhere(self, other)
 
-        return And(self, other, "find")
+        return And([self, other], "find")
 
 
 class FindWhere(Clause):
@@ -211,10 +211,10 @@ class FindWhere(Clause):
     def compile(self, root: bool = True) -> str:
         return f"{{{self.find} {self.where}}}"
 
-    def __or__(self, other: "Clause") -> "Clause":
+    def __or__(self, other: Clause) -> Or:
         raise XTDBException("Or operator is not supported for find-where clauses")
 
-    def __and__(self, other: "Clause") -> "Clause":
+    def __and__(self, other: Clause) -> Clause:
         raise XTDBException("And operator is not supported for find-where clauses")
 
 
