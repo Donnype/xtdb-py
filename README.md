@@ -1,3 +1,5 @@
+![Logo](docs/logo.png)
+
 # XTDB Python: A Python ORM for XTDB
 
 

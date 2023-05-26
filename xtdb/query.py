@@ -197,7 +197,7 @@ class Query:
 
     def _add_or_statement(self, object_type: Type[Base], field_name: str, to_alias: str) -> None:
         clauses = [
-            Where(object_type.alias(), f"{sc.alias()}/{field_name}", to_alias) for sc in object_type.__subclasses__()
+            Where(object_type.alias(), f"{sc.alias()}/{field_name}", to_alias) for sc in object_type._subclasses()
         ]
         self._where = self._where & Or(clauses)  # type: ignore
 
