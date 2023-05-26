@@ -1,4 +1,4 @@
-from typing import Any, List, Union
+from typing import Any, List, Optional, Union
 
 from xtdb.exceptions import XTDBException
 
@@ -12,22 +12,40 @@ class Clause:
     def idempotent(cls):
         return True
 
-    def compile(self, root: bool = True) -> str:
+    def compile(self, root: bool = True, *, separator=" ") -> str:
         raise NotImplementedError
 
-    def _collect(self) -> List:
-        return [self.compile(root=False)]
+    def format(self) -> str:
+        return self.compile(separator="\n    ")
+
+    def _collect(self, *, separator=" ") -> List:
+        return [self.compile(root=False, separator=separator)]
 
     def __str__(self) -> str:
         return self.compile()
 
-    def __and__(self, other: "Clause") -> "Clause":
-        if isinstance(other, Find):
+    def __and__(self, other: Optional["Clause"]) -> "Clause":
+        if other is None:
+            return self
+
+        if issubclass(type(other), Find):
             raise XTDBException("Cannot perform a where-find. User find-where instead.")
 
         return And([self, other])
 
-    def __or__(self, other: "Clause") -> "Or":
+    def __or__(self, other: Optional["Clause"]) -> "Clause":
+        raise NotImplementedError
+
+    def __ror__(self, other: Optional["Clause"]) -> "Clause":
+        if other is None:
+            return self
+
+        raise NotImplementedError
+
+    def __rand__(self, other: Optional["Clause"]) -> "Clause":
+        if other is None:
+            return self
+
         raise NotImplementedError
 
 
@@ -38,77 +56,88 @@ class And(Clause):
         self.clauses = clauses
         self.query_section = query_section
 
-    def compile(self, root: bool = True) -> str:
-        collected = self._collect()
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        collected = self._collect(separator=separator)
 
         if all(clause.idempotent() for clause in self.clauses):
             collected = list(set(collected))
 
         if all(clause.commutative() for clause in self.clauses):
-            expression = " ".join(sorted(collected))
+            expression = separator + separator.join(sorted(collected))
         else:
-            expression = " ".join(collected)
+            expression = separator + separator.join(collected)
 
         if root:
             return f":{self.query_section} [{expression}]"
 
         return expression
 
-    def _collect(self) -> List:
+    def _collect(self, *, separator=" ") -> List:
         collected = []
 
         for clause in self.clauses:
-            collected.extend(clause._collect())
+            collected.extend(clause._collect(separator=separator))
 
         return collected
 
-    def __or__(self, other: Clause) -> "Or":
+    def __or__(self, other: Optional[Clause]) -> "Clause":
+        if other is None:
+            return self
+
         if isinstance(other, Where):
             raise XTDBException("Cannot | on a single where, use & instead")
 
-        return Or([self, other], self.query_section)
+        return Or([self, other])
 
-    def __and__(self, other: Clause) -> Clause:
-        if self.query_section != "find" and isinstance(other, Find):
+    def __and__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
+        if self.query_section != "find" and issubclass(type(other), Find):
             raise XTDBException("Cannot perform a where-find. User find-where instead.")
 
-        elif isinstance(other, And) and other.query_section != "find":
+        if self.query_section == "find" and isinstance(other, And) and other.query_section != "find":
+            return FindWhere(self, other)
+
+        if self.query_section == "find" and isinstance(other, Where):
             return FindWhere(self, other)
 
         return And(self.clauses + [other], self.query_section)
 
 
 class Or(Clause):
-    def __init__(self, clauses: List[Clause], query_section: str = "where"):
+    def __init__(self, clauses: List[Clause]):
         super().__init__()
 
         self.clauses = clauses
-        self.query_section = query_section
 
-    def compile(self, root: bool = True) -> str:
+    def compile(self, root: bool = True, *, separator=" ") -> str:
         collected = []
 
         for clause in self.clauses:
             if isinstance(clause, And):
-                collected.append(f"(and {clause.compile(root=False)})")
+                collected.append(f"(and{clause.compile(root=False, separator=separator)})")
             else:
-                collected.append(clause.compile(root=False))
+                collected.append(clause.compile(root=False, separator=separator))
 
         if all(clause.idempotent() for clause in self.clauses):
             collected = list(set(collected))
 
         if all(clause.commutative() for clause in self.clauses):
-            expression = " ".join(sorted(collected))
+            expression = separator + separator.join(sorted(collected))
         else:
-            expression = " ".join(collected)
+            expression = separator + separator.join(collected)
 
         if root:
-            return f":where [(or {expression})]"
+            return f":where [(or{expression})]"
 
-        return f"(or {expression})"
+        return f"(or{expression})"
 
-    def __or__(self, other: Clause) -> "Or":
-        return Or(self.clauses + [other], self.query_section)
+    def __or__(self, other: Optional[Clause]) -> "Clause":
+        if other is None:
+            return self
+
+        return Or(self.clauses + [other])
 
 
 class Where(Clause):
@@ -119,13 +148,16 @@ class Where(Clause):
         self.field = field
         self.value = value
 
-    def compile(self, root: bool = True) -> str:
+    def compile(self, root: bool = True, *, separator=" ") -> str:
         if root:
             return f":where [[ {self.document} :{self.field} {self.value} ]]"
 
         return f"[ {self.document} :{self.field} {self.value} ]"
 
-    def __or__(self, other: Clause) -> Or:
+    def __or__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
         if isinstance(other, And):
             raise XTDBException("Cannot | on a single where, use & instead")
 
@@ -184,16 +216,22 @@ class Find(Clause):
     def idempotent(cls):
         return False
 
-    def compile(self, root: bool = True) -> str:
+    def compile(self, root: bool = True, *, separator=" ") -> str:
         if root:
             return f":find [{self.expression}]"
 
         return str(self.expression)
 
-    def __or__(self, other: Clause) -> Or:
+    def __or__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
         raise XTDBException("Or operator is not supported for find clauses")
 
-    def __and__(self, other: Clause) -> Clause:
+    def __and__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
         if isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
 
@@ -203,18 +241,80 @@ class Find(Clause):
         return And([self, other], "find")
 
 
+class Limit(Clause):
+    def __init__(self, limit: int):
+        self.limit = limit
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        return f" :limit {self.limit}"
+
+    def __and__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
+        return And([self, other])
+
+    def __or__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
+        raise XTDBException("Cannot use | on query keys")
+
+
+class Offset(Clause):
+    def __init__(self, offset: int):
+        self.offset = offset
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        return f" :offset {self.offset}"
+
+    def __and__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
+        return And([self, other])
+
+    def __or__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
+        raise XTDBException("Cannot use | on query keys")
+
+
 class FindWhere(Clause):
-    def __init__(self, find: Clause, where: Clause):
+    def __init__(self, find: Clause, where: Clause, limit: Optional[Limit] = None, offset: Optional[Offset] = None):
         self.find = find
         self.where = where
+        self.limit = limit
+        self.offset = offset
 
-    def compile(self, root: bool = True) -> str:
-        return f"{{{self.find} {self.where}}}"
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        q = f"{{:query {{{self.find.compile(separator=separator)} {self.where.compile(separator=separator)}"
 
-    def __or__(self, other: Clause) -> Or:
+        if self.limit is not None:
+            q += self.limit.compile(separator=separator)
+
+        if self.offset is not None:
+            q += self.offset.compile(separator=separator)
+
+        return q + "}}"
+
+    def __or__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
         raise XTDBException("Or operator is not supported for find-where clauses")
 
-    def __and__(self, other: Clause) -> Clause:
+    def __and__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
+        if isinstance(other, Limit):
+            return self.__class__(self.find, self.where, other, self.offset)
+
+        if isinstance(other, Offset):
+            return self.__class__(self.find, self.where, self.limit, other)
+
         raise XTDBException("And operator is not supported for find-where clauses")
 
 
@@ -239,6 +339,12 @@ class Max(Find):
 class Count(Find):
     def __init__(self, expression: str):
         aggregate = Aggregate("count", expression)
+        super().__init__(aggregate)
+
+
+class CountDistinct(Find):
+    def __init__(self, expression: str):
+        aggregate = Aggregate("count-distinct", expression)
         super().__init__(aggregate)
 
 
