@@ -18,6 +18,7 @@ from xtdb.datalog import (
     Sample,
     Stddev,
     Sum,
+    Timeout,
     Variance,
     Where,
 )
@@ -59,6 +60,8 @@ class Query:
 
     _limit: Optional[int] = None
     _offset: Optional[int] = None
+    _timeout: Optional[int] = None
+
     _preserved_return_type: bool = True
 
     def where(self, object_type: Type[Base], **kwargs) -> "Query":
@@ -156,6 +159,11 @@ class Query:
 
         return self
 
+    def timeout(self, timeout: int) -> "Query":
+        self._timeout = timeout
+
+        return self
+
     def _where_field_is(
         self, object_type: Type[Base], field_name: str, value: Union[Type[Base], Var, str, None]
     ) -> None:
@@ -212,6 +220,9 @@ class Query:
 
         if self._offset is not None:
             find_where = find_where & Offset(self._offset)
+
+        if self._timeout is not None:
+            find_where = find_where & Timeout(self._timeout)
 
         return find_where.compile(separator=separator)
 

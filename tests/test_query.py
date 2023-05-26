@@ -20,12 +20,21 @@ def test_basic_field_where_clause():
     [ FirstEntity :FirstEntity/name "test" ]
     [ FirstEntity :type "FirstEntity" ]] :limit 4}}"""
     )
+
     query = query.offset(0)
     assert (
         query.format()
         == """{:query {:find [(pull FirstEntity [*])] :where [
     [ FirstEntity :FirstEntity/name "test" ]
     [ FirstEntity :type "FirstEntity" ]] :limit 4 :offset 0}}"""
+    )
+
+    query = query.timeout(40)
+    assert (
+        query.format()
+        == """{:query {:find [(pull FirstEntity [*])] :where [
+    [ FirstEntity :FirstEntity/name "test" ]
+    [ FirstEntity :type "FirstEntity" ]] :limit 4 :offset 0 :timeout 40}}"""
     )
 
 

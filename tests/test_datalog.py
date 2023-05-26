@@ -8,6 +8,9 @@ def test_where_clauses():
     statement = Where("a", "b", "c")
     assert statement.compile() == ":where [[ a :b c ]]"
 
+    statement = Where("a", "b")
+    assert statement.compile() == ":where [[ a :b  ]]"
+
     statement = Where("a", "b", "c") & Where("1", "2", "3")
     assert statement.compile() == ":where [ [ 1 :2 3 ] [ a :b c ]]"
 

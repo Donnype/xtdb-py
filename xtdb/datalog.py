@@ -141,7 +141,7 @@ class Or(Clause):
 
 
 class Where(Clause):
-    def __init__(self, document: str, field: str, value: Any):
+    def __init__(self, document: str, field: str, value: Any = ""):
         super().__init__()
 
         self.document = document
@@ -281,12 +281,40 @@ class Offset(Clause):
         raise XTDBException("Cannot use | on query keys")
 
 
+class Timeout(Clause):
+    def __init__(self, timeout: int):
+        self.timeout = timeout
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        return f" :timeout {self.timeout}"
+
+    def __and__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
+        return And([self, other])
+
+    def __or__(self, other: Optional[Clause]) -> Clause:
+        if other is None:
+            return self
+
+        raise XTDBException("Cannot use | on query keys")
+
+
 class FindWhere(Clause):
-    def __init__(self, find: Clause, where: Clause, limit: Optional[Limit] = None, offset: Optional[Offset] = None):
+    def __init__(
+        self,
+        find: Clause,
+        where: Clause,
+        limit: Optional[Limit] = None,
+        offset: Optional[Offset] = None,
+        timeout: Optional[Timeout] = None,
+    ):
         self.find = find
         self.where = where
         self.limit = limit
         self.offset = offset
+        self.timeout = timeout
 
     def compile(self, root: bool = True, *, separator=" ") -> str:
         q = f"{{:query {{{self.find.compile(separator=separator)} {self.where.compile(separator=separator)}"
@@ -296,6 +324,9 @@ class FindWhere(Clause):
 
         if self.offset is not None:
             q += self.offset.compile(separator=separator)
+
+        if self.timeout is not None:
+            q += self.timeout.compile(separator=separator)
 
         return q + "}}"
 
@@ -310,10 +341,13 @@ class FindWhere(Clause):
             return self
 
         if isinstance(other, Limit):
-            return self.__class__(self.find, self.where, other, self.offset)
+            return self.__class__(self.find, self.where, other, self.offset, self.timeout)
 
         if isinstance(other, Offset):
-            return self.__class__(self.find, self.where, self.limit, other)
+            return self.__class__(self.find, self.where, self.limit, other, self.timeout)
+
+        if isinstance(other, Timeout):
+            return self.__class__(self.find, self.where, self.limit, self.offset, other)
 
         raise XTDBException("And operator is not supported for find-where clauses")
 

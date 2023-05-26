@@ -53,6 +53,12 @@ def test_query_simple_filter(xtdb_session: XTDBSession):
     result = xtdb_session.query(query, tx_id=0)
     assert result[0].dict() == {"FirstEntity/name": "test", "type": "FirstEntity", "xt/id": entity.id}
 
+    result = xtdb_session.query(query.timeout(200), tx_id=0)
+    assert result[0].dict() == {"FirstEntity/name": "test", "type": "FirstEntity", "xt/id": entity.id}
+
+    result = xtdb_session.query(query.limit(0), tx_id=0)
+    assert result == []
+
     xtdb_session.client.sync()
 
     xtdb_session.delete(entity)
