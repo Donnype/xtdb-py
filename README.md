@@ -44,6 +44,8 @@ client.get_entity("123")
 
 ### Using the ORM
 
+Below is an example of how to use the ORM functionality.
+
 ```python3
 import os
 from dataclasses import dataclass
@@ -76,6 +78,8 @@ result = session.query(query)
 assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
 ```
 
+To see more examples, check out the [examples directory](examples).
+Don't hesitate to add your own examples!
 
 ### Using the CLI for querying
 
