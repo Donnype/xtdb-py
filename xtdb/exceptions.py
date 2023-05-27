@@ -4,7 +4,3 @@ class XTDBException(Exception):
 
 class InvalidField(XTDBException):
     pass
-
-
-class InvalidPath(XTDBException):
-    pass

@@ -70,7 +70,7 @@ def test_find_clauses():
     with pytest.raises(XTDBException) as ctx:
         Find("pull(*)") | Find("b")
 
-    assert ctx.exconly() == "xtdb.exceptions.XTDBException: Or operator is not supported for find clauses"
+    assert ctx.exconly() == "xtdb.exceptions.XTDBException: Cannot use | on query keys"
 
 
 def test_aggregates():

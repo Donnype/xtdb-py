@@ -1,9 +1,6 @@
-import logging
 import uuid
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Type
-
-logger = logging.getLogger(__name__)
 
 TYPE_FIELD = "type"
 
@@ -74,7 +71,4 @@ class Fn(Base):
         return self.identifier
 
     def dict(self) -> Dict:
-        return {
-            "xt/id": self.identifier,
-            "xt/fn": self.function,
-        }
+        return {"xt/id": self.identifier, "xt/fn": self.function}

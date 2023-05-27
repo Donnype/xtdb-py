@@ -209,10 +209,7 @@ class XTDBClient:
         return res.json()
 
     def sync(self, timeout: Optional[int] = None):
-        params = {}
-
-        if timeout is not None:
-            params["timeout"] = timeout
+        params = {} if timeout is None else {"timeout": timeout}
 
         res = self._session.get(f"{self.base_url}/sync", params=params)
         self._verify_response(res)
@@ -248,10 +245,7 @@ class XTDBClient:
         return res.json()
 
     def await_transaction(self, tx_id: int, timeout: Optional[int] = None) -> None:
-        params = {"txId": tx_id}
-
-        if timeout is not None:
-            params["timeout"] = timeout
+        params = {"txId": tx_id} if timeout is None else {"txId": tx_id, "timeout": timeout}
 
         self._session.get(f"{self.base_url}/await-tx", params=params)
 

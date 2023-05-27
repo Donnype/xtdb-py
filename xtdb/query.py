@@ -184,7 +184,6 @@ class Query:
             return
 
         # TODO: support for list and dict?
-
         if not isinstance(value, type):
             raise InvalidField(f"value '{value}' should be a string or a Base Type")
 

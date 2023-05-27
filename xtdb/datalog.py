@@ -201,7 +201,15 @@ class Aggregate(Expression):
         super().__init__(statement)
 
 
-class Find(Clause):
+class QueryKey(Clause):
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        raise NotImplementedError
+
+    def _or(self, other: Clause) -> Clause:
+        raise XTDBException("Cannot use | on query keys")
+
+
+class Find(QueryKey):
     def __init__(self, expression: Union[str, Expression]):
         self.expression = expression
 
@@ -219,9 +227,6 @@ class Find(Clause):
 
         return str(self.expression)
 
-    def _or(self, other: Clause) -> Clause:
-        raise XTDBException("Or operator is not supported for find clauses")
-
     def _and(self, other: Clause) -> Clause:
         if isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
@@ -232,7 +237,7 @@ class Find(Clause):
         return And([self, other], "find")
 
 
-class Limit(Clause):
+class Limit(QueryKey):
     def __init__(self, limit: int):
         self.limit = limit
 
@@ -242,11 +247,8 @@ class Limit(Clause):
     def _and(self, other: Clause) -> Clause:
         return And([self, other])
 
-    def _or(self, other: Clause) -> Clause:
-        raise XTDBException("Cannot use | on query keys")
 
-
-class Offset(Clause):
+class Offset(QueryKey):
     def __init__(self, offset: int):
         self.offset = offset
 
@@ -256,11 +258,8 @@ class Offset(Clause):
     def _and(self, other: Clause) -> Clause:
         return And([self, other])
 
-    def _or(self, other: Clause) -> Clause:
-        raise XTDBException("Cannot use | on query keys")
 
-
-class Timeout(Clause):
+class Timeout(QueryKey):
     def __init__(self, timeout: int):
         self.timeout = timeout
 
@@ -270,11 +269,8 @@ class Timeout(Clause):
     def _and(self, other: Clause) -> Clause:
         return And([self, other])
 
-    def _or(self, other: Clause) -> Clause:
-        raise XTDBException("Cannot use | on query keys")
 
-
-class FindWhere(Clause):
+class FindWhere(QueryKey):
     def __init__(
         self,
         find: Clause,
@@ -302,9 +298,6 @@ class FindWhere(Clause):
             q += self.timeout.compile(separator=separator)
 
         return q + "}}"
-
-    def _or(self, other: Clause) -> Clause:
-        raise XTDBException("Or operator is not supported for find-where clauses")
 
     def _and(self, other: Clause) -> Clause:
         if isinstance(other, Limit):
