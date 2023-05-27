@@ -27,6 +27,8 @@ $ export XTDB_URI=http://localhost:3000/_xtdb
 
 ### Using the client
 
+The `XTDBClient` supports the full HTTP API spec.
+
 ```python3
 import os
 
@@ -77,7 +79,9 @@ assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt
 
 ### Using the CLI for querying
 
-Using a query string
+This package also comes with an easy CLI tool to query XTDB.
+To query XTDB using a plain query you can run
+
 ```bash
 $ echo '{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}' | python -m xtdb | jq
 [
@@ -95,7 +99,7 @@ $ echo '{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}' | python 
 ]
 ```
 
-or a query from a file:
+To use a query file the command can be modified to the following:
 
 ```bash
 $ cat query.txt
