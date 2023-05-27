@@ -28,12 +28,21 @@ class Clause:
         if other is None:
             return self
 
+        return self._and(other)
+
+    def _and(self, other: "Clause") -> "Clause":
         if issubclass(type(other), Find):
             raise XTDBException("Cannot perform a where-find. User find-where instead.")
 
         return And([self, other])
 
     def __or__(self, other: Optional["Clause"]) -> "Clause":
+        if other is None:
+            return self
+
+        return self._or(other)
+
+    def _or(self, other: "Clause") -> "Clause":
         raise NotImplementedError
 
     def __ror__(self, other: Optional["Clause"]) -> "Clause":
@@ -80,19 +89,13 @@ class And(Clause):
 
         return collected
 
-    def __or__(self, other: Optional[Clause]) -> "Clause":
-        if other is None:
-            return self
-
+    def _or(self, other: Clause) -> "Clause":
         if isinstance(other, Where):
             raise XTDBException("Cannot | on a single where, use & instead")
 
         return Or([self, other])
 
-    def __and__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _and(self, other: Clause) -> Clause:
         if self.query_section != "find" and issubclass(type(other), Find):
             raise XTDBException("Cannot perform a where-find. User find-where instead.")
 
@@ -133,10 +136,7 @@ class Or(Clause):
 
         return f"(or{expression})"
 
-    def __or__(self, other: Optional[Clause]) -> "Clause":
-        if other is None:
-            return self
-
+    def _or(self, other: Clause) -> Clause:
         return Or(self.clauses + [other])
 
 
@@ -154,10 +154,7 @@ class Where(Clause):
 
         return f"[ {self.document} :{self.field} {self.value} ]"
 
-    def __or__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _or(self, other: Clause) -> Clause:
         if isinstance(other, And):
             raise XTDBException("Cannot | on a single where, use & instead")
 
@@ -222,16 +219,10 @@ class Find(Clause):
 
         return str(self.expression)
 
-    def __or__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _or(self, other: Clause) -> Clause:
         raise XTDBException("Or operator is not supported for find clauses")
 
-    def __and__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _and(self, other: Clause) -> Clause:
         if isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
 
@@ -248,16 +239,10 @@ class Limit(Clause):
     def compile(self, root: bool = True, *, separator=" ") -> str:
         return f" :limit {self.limit}"
 
-    def __and__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _and(self, other: Clause) -> Clause:
         return And([self, other])
 
-    def __or__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _or(self, other: Clause) -> Clause:
         raise XTDBException("Cannot use | on query keys")
 
 
@@ -268,16 +253,10 @@ class Offset(Clause):
     def compile(self, root: bool = True, *, separator=" ") -> str:
         return f" :offset {self.offset}"
 
-    def __and__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _and(self, other: Clause) -> Clause:
         return And([self, other])
 
-    def __or__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _or(self, other: Clause) -> Clause:
         raise XTDBException("Cannot use | on query keys")
 
 
@@ -288,16 +267,10 @@ class Timeout(Clause):
     def compile(self, root: bool = True, *, separator=" ") -> str:
         return f" :timeout {self.timeout}"
 
-    def __and__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _and(self, other: Clause) -> Clause:
         return And([self, other])
 
-    def __or__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _or(self, other: Clause) -> Clause:
         raise XTDBException("Cannot use | on query keys")
 
 
@@ -330,16 +303,10 @@ class FindWhere(Clause):
 
         return q + "}}"
 
-    def __or__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _or(self, other: Clause) -> Clause:
         raise XTDBException("Or operator is not supported for find-where clauses")
 
-    def __and__(self, other: Optional[Clause]) -> Clause:
-        if other is None:
-            return self
-
+    def _and(self, other: Clause) -> Clause:
         if isinstance(other, Limit):
             return self.__class__(self.find, self.where, other, self.offset, self.timeout)
 
@@ -354,71 +321,59 @@ class FindWhere(Clause):
 
 class Sum(Find):
     def __init__(self, expression: str):
-        aggregate = Aggregate("sum", expression)
-        super().__init__(aggregate)
+        super().__init__(Aggregate("sum", expression))
 
 
 class Min(Find):
     def __init__(self, expression: str):
-        aggregate = Aggregate("min", expression)
-        super().__init__(aggregate)
+        super().__init__(Aggregate("min", expression))
 
 
 class Max(Find):
     def __init__(self, expression: str):
-        aggregate = Aggregate("max", expression)
-        super().__init__(aggregate)
+        super().__init__(Aggregate("max", expression))
 
 
 class Count(Find):
     def __init__(self, expression: str):
-        aggregate = Aggregate("count", expression)
-        super().__init__(aggregate)
+        super().__init__(Aggregate("count", expression))
 
 
 class CountDistinct(Find):
     def __init__(self, expression: str):
-        aggregate = Aggregate("count-distinct", expression)
-        super().__init__(aggregate)
+        super().__init__(Aggregate("count-distinct", expression))
 
 
 class Avg(Find):
     def __init__(self, expression: str):
-        aggregate = Aggregate("avg", expression)
-        super().__init__(aggregate)
+        super().__init__(Aggregate("avg", expression))
 
 
 class Median(Find):
     def __init__(self, expression: str):
-        aggregate = Aggregate("median", expression)
-        super().__init__(aggregate)
+        super().__init__(Aggregate("median", expression))
 
 
 class Variance(Find):
     def __init__(self, expression: str):
-        aggregate = Aggregate("variance", expression)
-        super().__init__(aggregate)
+        super().__init__(Aggregate("variance", expression))
 
 
 class Stddev(Find):
     def __init__(self, expression: str):
-        aggregate = Aggregate("stddev", expression)
-        super().__init__(aggregate)
+        super().__init__(Aggregate("stddev", expression))
 
 
 class Distinct(Find):
     def __init__(self, expression: str):
-        aggregate = Aggregate("distinct", expression)
-        super().__init__(aggregate)
+        super().__init__(Aggregate("distinct", expression))
 
 
 class Rand(Find):
     def __init__(self, expression: str, N: int):
-        aggregate = Aggregate("rand", expression, str(N))
-        super().__init__(aggregate)
+        super().__init__(Aggregate("rand", expression, str(N)))
 
 
 class Sample(Find):
     def __init__(self, expression: str, N: int):
-        aggregate = Aggregate("sample", expression, str(N))
-        super().__init__(aggregate)
+        super().__init__(Aggregate("sample", expression, str(N)))
