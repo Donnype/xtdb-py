@@ -1,4 +1,4 @@
-![Logo](docs/logo.png)
+![Logo](https://raw.githubusercontent.com/Donnype/xtdb-py/main/docs/logo.png)
 
 # XTDB Python: A Python ORM for XTDB
 
