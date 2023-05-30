@@ -19,11 +19,11 @@ class Base:
         return cls.__dataclass_fields__
 
     @classmethod
-    def _relations(cls) -> List[str]:
+    def relations(cls) -> List[str]:
         return [key for key, value in cls.fields().items() if issubclass(value.type, Base)]
 
     @classmethod
-    def _subclasses(cls) -> List[Type["Base"]]:
+    def subclasses(cls) -> List[Type["Base"]]:
         return cls.__subclasses__()
 
     @classmethod
@@ -31,7 +31,7 @@ class Base:
         return cls.__name__
 
     def dict(self) -> Dict:
-        result = {}
+        result = {"xt/id": self.id, "type": self.alias()}
 
         for key, value in asdict(self).items():
             if issubclass(self.fields().get(key).type, Base):
@@ -42,17 +42,13 @@ class Base:
             else:
                 result[f"{self.alias()}/{key}"] = value
 
-        result["xt/id"] = self.id
-        result["type"] = self.alias()
-
         return result
 
     @classmethod
     def from_dict(cls, document: Dict) -> "Base":
         doc = {key.replace(f"{cls.alias()}/", ""): value for key, value in document.items()}
-        pk = doc["xt/id"]
+        pk = doc.pop("xt/id")
 
-        del doc["xt/id"]
         del doc["type"]
 
         instance = cls(**doc)

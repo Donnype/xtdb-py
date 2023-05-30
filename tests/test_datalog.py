@@ -1,6 +1,6 @@
 import pytest
 
-from xtdb.datalog import Aggregate, Expression, Find, Sample, Sum, Where
+from xtdb.datalog import Expression, Find, Sample, Sum, Where, _BaseAggregate
 from xtdb.exceptions import XTDBException
 
 
@@ -74,21 +74,21 @@ def test_find_clauses():
 
 
 def test_aggregates():
-    statement = Find("a") & Find(Aggregate("sum", "field"))
+    statement = Find("a") & Find(_BaseAggregate("sum", "field"))
     assert statement.compile() == ":find [ a (sum field)]"
 
-    statement = Find("a") & Find(Aggregate("sample", "field", "12"))
+    statement = Find("a") & Find(_BaseAggregate("sample", "field", "12"))
     assert statement.compile() == ":find [ a (sample 12 field)]"
 
     with pytest.raises(XTDBException) as ctx:
-        Find("a") & Find(Aggregate("wrong", "field"))
+        Find("a") & Find(_BaseAggregate("wrong", "field"))
 
     assert ctx.exconly() == "xtdb.exceptions.XTDBException: Invalid aggregate function"
 
     with pytest.raises(XTDBException) as ctx:
-        Find("a") & Find(Aggregate("rand", "field"))
+        Find("a") & Find(_BaseAggregate("rand", "field"))
 
-    assert ctx.exconly() == "xtdb.exceptions.XTDBException: Invalid arguments to aggregate function, needs: ('N',)"
+    assert ctx.exconly() == "xtdb.exceptions.XTDBException: Invalid arguments to aggregate, it needs one argument: N"
 
 
 def test_concrete_aggregates():

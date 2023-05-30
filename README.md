@@ -1,6 +1,6 @@
 ![Logo](docs/logo.png)
 
-# XTDB Python: A Python ORM for XTDB
+# XTDB Python: A Python ORM for [XTDB](https://www.xtdb.com/)
 
 
 [![Tests](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml)
@@ -27,7 +27,8 @@ $ export XTDB_URI=http://localhost:3000/_xtdb
 
 ### Using the client
 
-The `XTDBClient` supports the full HTTP API spec.
+The `XTDBClient` supports the full [HTTP API spec](https://docs.xtdb.com/clients/http/).
+
 
 ```python3
 import os
@@ -38,7 +39,10 @@ client = XTDBClient(os.environ["XTDB_URI"])
 client.submit_transaction([Operation.put({"xt/id": "123", "name": "fred"})])
 
 client.query('{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}')
+#  [[{'name': 'fred', 'xt/id': '123'}]]
+
 client.get_entity("123")
+#  {'name': 'fred', 'xt/id': '123'}
 ```
 
 
@@ -65,17 +69,17 @@ class SecondEntity(Base):
     age: int
     test_entity: TestEntity
 
-
 session = XTDBSession(os.environ["XTDB_URI"])
-
 entity = TestEntity(name="test")
-session.put(entity)
-session.commit()
+
+with session:
+    session.put(entity)
 
 query = Query(TestEntity).where(TestEntity, name="test")
 result = session.query(query)
 
-assert result[0].dict() == {"TestEntity/name": "test", "type": "TestEntity", "xt/id": entity.id}
+result[0].dict()
+#  {"TestEntity/name": "test", "type": "TestEntity", "xt/id": "fe2a3ee0-9254-41dc-91cc-74ad9e2a16db"}
 ```
 
 To see more examples, check out the [examples directory](examples).

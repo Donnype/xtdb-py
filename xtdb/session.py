@@ -47,10 +47,8 @@ class Operation:
 
         if self.type is OperationType.MATCH:
             return [self.type.value, self.value["xt/id"], self.value, self.valid_time.isoformat()]
-
         if self.type is OperationType.FN:
             return [self.type.value, self.value["identifier"], *self.value["args"]]
-
         if self.type is OperationType.PUT and "xt/fn" in self.value:
             return [self.type.value, self.value]
 
@@ -96,9 +94,10 @@ class XTDBClient:
         self._session.mount("http://", HTTPAdapter(max_retries=Retry(total=6, backoff_factor=0.5)))
         self._session.mount("https://", HTTPAdapter(max_retries=Retry(total=6, backoff_factor=0.5)))
         self._session.headers["Accept"] = "application/json"
+        self._session.hooks["response"] = self._verify_response
 
     @staticmethod
-    def _verify_response(response: Response) -> None:
+    def _verify_response(response: Response, *args, **kwargs) -> None:
         try:
             response.raise_for_status()
         except HTTPError as e:
@@ -107,10 +106,7 @@ class XTDBClient:
             raise XTDBException from e
 
     def status(self) -> XTDBStatus:
-        res = self._session.get(f"{self.base_url}/status")
-        self._verify_response(res)
-
-        return XTDBStatus(**res.json())
+        return XTDBStatus(**self._session.get(f"{self.base_url}/status").json())
 
     def get_entity(
         self,
@@ -120,19 +116,12 @@ class XTDBClient:
         tx_time: Optional[datetime] = None,
         tx_id: Optional[int] = None,
     ) -> Dict:
-        params = {"eid": eid}
-
-        if valid_time is not None:
-            params["valid-time"] = valid_time.isoformat()
-
-        if tx_time is not None:
-            params["tx-time"] = tx_time.isoformat()
-
-        if tx_id is not None:
-            params["tx-id"] = str(tx_id)
+        params = self._format_parameter("eid", eid)
+        params = self._format_parameter("valid-time", valid_time, params)
+        params = self._format_parameter("tx-time", tx_time, params)
+        params = self._format_parameter("tx-id", tx_id, params)
 
         res = self._session.get(f"{self.base_url}/entity", params=params)
-        self._verify_response(res)
         return res.json()
 
     def get_entity_transactions(
@@ -143,20 +132,12 @@ class XTDBClient:
         tx_time: Optional[datetime] = None,
         tx_id: Optional[int] = None,
     ) -> Dict:
-        params = {"eid": eid}
+        params = self._format_parameter("eid", eid)
+        params = self._format_parameter("valid-time", valid_time, params)
+        params = self._format_parameter("tx-time", tx_time, params)
+        params = self._format_parameter("tx-id", tx_id, params)
 
-        if valid_time is not None:
-            params["valid-time"] = valid_time.isoformat()
-
-        if tx_time is not None:
-            params["tx-time"] = tx_time.isoformat()
-
-        if tx_id is not None:
-            params["tx-id"] = str(tx_id)
-
-        res = self._session.get(f"{self.base_url}/entity-tx", params=params)
-        self._verify_response(res)
-        return res.json()
+        return self._session.get(f"{self.base_url}/entity-tx", params=params).json()
 
     def get_entity_history(
         self,
@@ -172,49 +153,25 @@ class XTDBClient:
         end_tx_time: Optional[datetime] = None,
         end_tx_id: Optional[int] = None,
     ) -> Dict:
-        params = {
-            "eid": eid,
-            "history": "true",
-            "sortOrder": sort_order,
-            "with-corrections": str(with_corrections).lower(),
-            "with-docs": str(with_docs).lower(),
-        }
+        params = self._format_parameter("eid", eid)
+        params = self._format_parameter("history", True, params)
+        params = self._format_parameter("sort-order", sort_order, params)
+        params = self._format_parameter("with-corrections", with_corrections, params)
+        params = self._format_parameter("with-docs", with_docs, params)
+        params = self._format_parameter("start-valid-time", start_valid_time, params)
+        params = self._format_parameter("start-tx-time", start_tx_time, params)
+        params = self._format_parameter("start-tx-id", start_tx_id, params)
+        params = self._format_parameter("end-valid-time", end_valid_time, params)
+        params = self._format_parameter("end-tx-time", end_tx_time, params)
+        params = self._format_parameter("end-tx-id", end_tx_id, params)
 
-        if start_valid_time is not None:
-            params["start-valid-time"] = start_valid_time.isoformat()
-
-        if start_tx_time is not None:
-            params["start-tx-time"] = start_tx_time.isoformat()
-
-        if start_tx_id is not None:
-            params["start-tx-id"] = str(start_tx_id)
-
-        if end_valid_time is not None:
-            params["end-valid-time"] = end_valid_time.isoformat()
-
-        if end_tx_time is not None:
-            params["end-tx-time"] = end_tx_time.isoformat()
-
-        if end_tx_id is not None:
-            params["end-tx-id"] = str(end_tx_id)
-
-        res = self._session.get(f"{self.base_url}/entity", params=params)
-        self._verify_response(res)
-        return res.json()
+        return self._session.get(f"{self.base_url}/entity", params=params).json()
 
     def get_attribute_stats(self):
-        res = self._session.get(f"{self.base_url}/attribute-stats")
-        self._verify_response(res)
-
-        return res.json()
+        return self._session.get(f"{self.base_url}/attribute-stats").json()
 
     def sync(self, timeout: Optional[int] = None):
-        params = {} if timeout is None else {"timeout": timeout}
-
-        res = self._session.get(f"{self.base_url}/sync", params=params)
-        self._verify_response(res)
-
-        return res.json()
+        return self._session.get(f"{self.base_url}/sync", params=self._format_parameter("timeout", timeout)).json()
 
     def query(
         self,
@@ -224,101 +181,73 @@ class XTDBClient:
         tx_time: Optional[datetime] = None,
         tx_id: Optional[int] = None,
     ) -> Union[List, Dict]:
-        params = {}
+        params = self._format_parameter("valid-time", valid_time)
+        params = self._format_parameter("tx-time", tx_time, params)
+        params = self._format_parameter("tx-id", tx_id, params)
 
-        if valid_time is not None:
-            params["valid-time"] = valid_time.isoformat()
-
-        if tx_time is not None:
-            params["tx-time"] = tx_time.isoformat()
-
-        if tx_id is not None:
-            params["tx-id"] = str(tx_id)
-
-        res = self._session.post(
-            f"{self.base_url}/query",
-            params=params,
-            data=str(query),
-            headers={"Content-Type": "application/edn"},
-        )
-        self._verify_response(res)
-        return res.json()
+        return self._session.post(
+            f"{self.base_url}/query", str(query), params=params, headers={"Content-Type": "application/edn"}
+        ).json()
 
     def await_transaction(self, tx_id: int, timeout: Optional[int] = None) -> None:
-        params = {"txId": tx_id} if timeout is None else {"txId": tx_id, "timeout": timeout}
+        params = self._format_parameter("timeout", timeout)
+        params = self._format_parameter("tx-id", tx_id, params)
 
         self._session.get(f"{self.base_url}/await-tx", params=params)
 
     def await_transaction_time(self, tx_time: datetime, timeout: Optional[int] = None) -> None:
-        params = {"tx-time": tx_time.isoformat()}
-
-        if timeout is not None:
-            params["timeout"] = str(timeout)
+        params = self._format_parameter("tx-time", tx_time)
+        params = self._format_parameter("timeout", timeout, params)
 
         self._session.get(f"{self.base_url}/await-tx-time", params=params)
 
     def get_transaction_log(self, after_tx_id: Optional[int] = None, with_ops: Optional[bool] = None):
-        params = {}
+        params = self._format_parameter("after-tx-id", after_tx_id)
+        params = self._format_parameter("with-ops?", with_ops, params)
 
-        if after_tx_id is not None:
-            params["after-tx-id"] = str(after_tx_id)
-
-        if with_ops is not None:
-            params["with-ops?"] = str(with_ops).lower()
-
-        res = self._session.get(f"{self.base_url}/tx-log", params=params)
-        self._verify_response(res)
-
-        return res.json()
+        return self._session.get(f"{self.base_url}/tx-log", params=params).json()
 
     def submit_transaction(self, transaction: Union[Transaction, List]) -> None:
         if isinstance(transaction, list):
             transaction = Transaction(operations=transaction)
 
         res = self._session.post(
-            f"{self.base_url}/submit-tx",
-            data=transaction.json(),
-            headers={"Content-Type": "application/json"},
+            f"{self.base_url}/submit-tx", transaction.json(), headers={"Content-Type": "application/json"}
         )
 
-        self._verify_response(res)
         self.await_transaction(res.json()["txId"])
 
     def get_transaction_committed(self, tx_id: int):
-        res = self._session.get(f"{self.base_url}/tx-committed", params={"tx-id": tx_id})
-
-        self._verify_response(res)
-        return res.json()
+        return self._session.get(f"{self.base_url}/tx-committed", params=self._format_parameter("tx-id", tx_id)).json()
 
     def get_latest_completed_transaction(self):
-        res = self._session.get(f"{self.base_url}/latest-completed-tx")
-
-        self._verify_response(res)
-        return res.json()
+        return self._session.get(f"{self.base_url}/latest-completed-tx").json()
 
     def get_latest_submitted_transaction(self):
-        res = self._session.get(f"{self.base_url}/latest-submitted-tx")
-
-        self._verify_response(res)
-        return res.json()
+        return self._session.get(f"{self.base_url}/latest-submitted-tx").json()
 
     def get_active_queries(self):
-        res = self._session.get(f"{self.base_url}/active-queries")
-
-        self._verify_response(res)
-        return res.json()
+        return self._session.get(f"{self.base_url}/active-queries").json()
 
     def get_recent_queries(self):
-        res = self._session.get(f"{self.base_url}/recent-queries")
-
-        self._verify_response(res)
-        return res.json()
+        return self._session.get(f"{self.base_url}/recent-queries").json()
 
     def get_slowest_queries(self):
-        res = self._session.get(f"{self.base_url}/slowest-queries")
+        return self._session.get(f"{self.base_url}/slowest-queries").json()
 
-        self._verify_response(res)
-        return res.json()
+    @staticmethod
+    def _format_parameter(
+        key: str, parameter: Union[None, datetime, int, str, bool], current_params: Optional[Dict] = None
+    ) -> Dict:
+        if current_params is None:
+            current_params = {}
+
+        if isinstance(parameter, datetime):
+            current_params[key] = parameter.isoformat()
+        if isinstance(parameter, (int, str, bool)):
+            current_params[key] = str(parameter).lower()
+
+        return current_params
 
 
 class XTDBSession:

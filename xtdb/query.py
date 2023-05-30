@@ -23,7 +23,7 @@ from xtdb.datalog import (
     Where,
 )
 from xtdb.exceptions import InvalidField
-from xtdb.orm import Base
+from xtdb.orm import TYPE_FIELD, Base
 
 
 @dataclass
@@ -36,10 +36,7 @@ class Var:
 
 @dataclass
 class Query:
-    """Object representing an XTDB query.
-
-        result_type: Object being queried: executing the query should yield only this Object.
-
+    """
     Example usage:
 
     >>> query = Query(Object1).where(Object1, name="test")
@@ -57,7 +54,6 @@ class Query:
 
     _find: Optional[Clause] = None
     _where: Optional[Clause] = None
-
     _limit: Optional[Limit] = None
     _offset: Optional[Offset] = None
     _timeout: Optional[Timeout] = None
@@ -172,30 +168,24 @@ class Query:
 
         if isinstance(value, str):
             value = value.replace('"', r"\"")
-            self._add_where_statement(object_type, field_name, f'"{value}"')
-            return
+            return self._add_where_statement(object_type, field_name, f'"{value}"')
 
-        if type(value) in [int, float, bool, Var]:
-            self._add_where_statement(object_type, field_name, f"{value}")
-            return
+        if isinstance(value, (int, float, bool, Var)):
+            return self._add_where_statement(object_type, field_name, f"{str(value).lower()}")
 
         if value is None:
-            self._add_where_statement(object_type, field_name, "nil")
-            return
+            return self._add_where_statement(object_type, field_name, "nil")
 
         # TODO: support for list and dict?
         if not isinstance(value, type):
             raise InvalidField(f"value '{value}' should be a string or a Base Type")
-
         if not issubclass(value, Base):
             raise InvalidField(f"{value} is not an Base Type")
-
-        if field_name not in object_type._relations():
+        if field_name not in object_type.relations():
             raise InvalidField(f'"{field_name}" is not a relation of {object_type.alias()}')
 
-        if object_type._subclasses():
-            self._add_or_statement(object_type, field_name, value.alias())
-            return
+        if object_type.subclasses():
+            return self._add_or_statement(object_type, field_name, value.alias())
 
         self._add_where_statement(object_type, field_name, value.alias())
 
@@ -204,14 +194,13 @@ class Query:
 
     def _add_or_statement(self, object_type: Type[Base], field_name: str, to_alias: str) -> None:
         clauses = [
-            Where(object_type.alias(), f"{sc.alias()}/{field_name}", to_alias) for sc in object_type._subclasses()
+            Where(object_type.alias(), f"{sc.alias()}/{field_name}", to_alias) for sc in object_type.subclasses()
         ]
         self._where = self._where & Or(clauses)  # type: ignore
 
     def _compile(self, *, separator=" ") -> str:
-        where = self._where & Where(self.result_type.alias(), "type", f'"{self.result_type.alias()}"')
+        where = self._where & Where(self.result_type.alias(), TYPE_FIELD, f'"{self.result_type.alias()}"')
         find = Find(f"(pull {self.result_type.alias()} [*])") if self._find is None else self._find
-
         find_where = find & where & self._limit & self._offset & self._timeout
 
         return find_where.compile(separator=separator)

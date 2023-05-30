@@ -4,13 +4,8 @@ from xtdb.exceptions import XTDBException
 
 
 class Clause:
-    @classmethod
-    def commutative(cls):
-        return True
-
-    @classmethod
-    def idempotent(cls):
-        return True
+    commutative = True
+    idempotent = True
 
     def compile(self, root: bool = True, *, separator=" ") -> str:
         raise NotImplementedError
@@ -66,15 +61,8 @@ class And(Clause):
         self.query_section = query_section
 
     def compile(self, root: bool = True, *, separator=" ") -> str:
-        collected = self._collect(separator=separator)
-
-        if all(clause.idempotent() for clause in self.clauses):
-            collected = list(set(collected))
-
-        if all(clause.commutative() for clause in self.clauses):
-            expression = separator + separator.join(sorted(collected))
-        else:
-            expression = separator + separator.join(collected)
+        compiled_clauses = self._collect(separator=separator)
+        expression = separator + separator.join(compiled_clauses)
 
         if root:
             return f":{self.query_section} [{expression}]"
@@ -87,6 +75,11 @@ class And(Clause):
         for clause in self.clauses:
             collected.extend(clause._collect(separator=separator))
 
+        if all(clause.idempotent for clause in self.clauses):
+            collected = list(set(collected))
+        if all(clause.commutative for clause in self.clauses):
+            collected = sorted(collected)
+
         return collected
 
     def _or(self, other: Clause) -> "Clause":
@@ -98,10 +91,8 @@ class And(Clause):
     def _and(self, other: Clause) -> Clause:
         if self.query_section != "find" and issubclass(type(other), Find):
             raise XTDBException("Cannot perform a where-find. User find-where instead.")
-
         if self.query_section == "find" and isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
-
         if self.query_section == "find" and isinstance(other, Where):
             return FindWhere(self, other)
 
@@ -123,18 +114,16 @@ class Or(Clause):
             else:
                 collected.append(clause.compile(root=False, separator=separator))
 
-        if all(clause.idempotent() for clause in self.clauses):
+        if all(clause.idempotent for clause in self.clauses):
             collected = list(set(collected))
 
-        if all(clause.commutative() for clause in self.clauses):
-            expression = separator + separator.join(sorted(collected))
-        else:
-            expression = separator + separator.join(collected)
+        if all(clause.commutative for clause in self.clauses):
+            collected = sorted(collected)
 
         if root:
-            return f":where [(or{expression})]"
+            return f":where [(or{separator}{separator.join(collected)})]"
 
-        return f"(or{expression})"
+        return f"(or{separator}{separator.join(collected)})"
 
     def _or(self, other: Clause) -> Clause:
         return Or(self.clauses + [other])
@@ -169,36 +158,22 @@ class Expression:
         return self.statement
 
 
-class Aggregate(Expression):
-    supported_aggregates = {
-        "sum": (),
-        "min": (),
-        "max": (),
-        "count": (),
-        "avg": (),
-        "median": (),
-        "variance": (),
-        "stddev": (),
-        "rand": ("N",),
-        "sample": ("N",),
-        "distinct": (),
-    }
+class _BaseAggregate(Expression):
+    supported_aggregates = ["sum", "min", "max", "count", "avg", "median", "variance", "stddev", "distinct"]
+    supported_aggregates_with_arg = ["rand", "sample"]
 
     def __init__(self, function: str, expression: str, *args):
-        if function not in self.supported_aggregates:
+        if function not in self.supported_aggregates + self.supported_aggregates_with_arg:
             raise XTDBException("Invalid aggregate function")
 
-        if len(self.supported_aggregates[function]) != len(args):
-            raise XTDBException(
-                f"Invalid arguments to aggregate function, needs: {self.supported_aggregates[function]}",
-            )
+        if function in self.supported_aggregates:
+            super().__init__(f"({function} {expression})")
 
-        if self.supported_aggregates[function]:
-            statement = f"({function} {' '.join(args)} {expression})"
-        else:
-            statement = f"({function} {expression})"
+        if function in self.supported_aggregates_with_arg:
+            if len(args) != 1:
+                raise XTDBException("Invalid arguments to aggregate, it needs one argument: N")
 
-        super().__init__(statement)
+            super().__init__(f"({function} {' '.join(args)} {expression})")
 
 
 class QueryKey(Clause):
@@ -208,18 +183,16 @@ class QueryKey(Clause):
     def _or(self, other: Clause) -> Clause:
         raise XTDBException("Cannot use | on query keys")
 
+    def _and(self, other: Clause) -> Clause:
+        return And([self, other])
+
 
 class Find(QueryKey):
+    commutative = False
+    idempotent = False
+
     def __init__(self, expression: Union[str, Expression]):
         self.expression = expression
-
-    @classmethod
-    def commutative(cls):
-        return False
-
-    @classmethod
-    def idempotent(cls):
-        return False
 
     def compile(self, root: bool = True, *, separator=" ") -> str:
         if root:
@@ -230,7 +203,6 @@ class Find(QueryKey):
     def _and(self, other: Clause) -> Clause:
         if isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
-
         if isinstance(other, Where):
             return FindWhere(self, other)
 
@@ -244,9 +216,6 @@ class Limit(QueryKey):
     def compile(self, root: bool = True, *, separator=" ") -> str:
         return f" :limit {self.limit}"
 
-    def _and(self, other: Clause) -> Clause:
-        return And([self, other])
-
 
 class Offset(QueryKey):
     def __init__(self, offset: int):
@@ -255,9 +224,6 @@ class Offset(QueryKey):
     def compile(self, root: bool = True, *, separator=" ") -> str:
         return f" :offset {self.offset}"
 
-    def _and(self, other: Clause) -> Clause:
-        return And([self, other])
-
 
 class Timeout(QueryKey):
     def __init__(self, timeout: int):
@@ -265,9 +231,6 @@ class Timeout(QueryKey):
 
     def compile(self, root: bool = True, *, separator=" ") -> str:
         return f" :timeout {self.timeout}"
-
-    def _and(self, other: Clause) -> Clause:
-        return And([self, other])
 
 
 class FindWhere(QueryKey):
@@ -301,72 +264,41 @@ class FindWhere(QueryKey):
 
     def _and(self, other: Clause) -> Clause:
         if isinstance(other, Limit):
-            return self.__class__(self.find, self.where, other, self.offset, self.timeout)
-
+            return FindWhere(self.find, self.where, other, self.offset, self.timeout)
         if isinstance(other, Offset):
-            return self.__class__(self.find, self.where, self.limit, other, self.timeout)
-
+            return FindWhere(self.find, self.where, self.limit, other, self.timeout)
         if isinstance(other, Timeout):
-            return self.__class__(self.find, self.where, self.limit, self.offset, other)
+            return FindWhere(self.find, self.where, self.limit, self.offset, other)
 
         raise XTDBException("And operator is not supported for find-where clauses")
 
 
-class Sum(Find):
-    def __init__(self, expression: str):
-        super().__init__(Aggregate("sum", expression))
+def _build_find_aggregation_class(name: str):
+    class Extended(Find):
+        def __init__(self, expression: str):
+            super().__init__(_BaseAggregate(name, expression))
+
+    return Extended
 
 
-class Min(Find):
-    def __init__(self, expression: str):
-        super().__init__(Aggregate("min", expression))
+def _build_find_aggregation_class_with_argument(name: str):
+    class Extended(Find):
+        def __init__(self, expression: str, N: int):
+            super().__init__(_BaseAggregate(name, expression, str(N)))
+
+    return Extended
 
 
-class Max(Find):
-    def __init__(self, expression: str):
-        super().__init__(Aggregate("max", expression))
-
-
-class Count(Find):
-    def __init__(self, expression: str):
-        super().__init__(Aggregate("count", expression))
-
-
-class CountDistinct(Find):
-    def __init__(self, expression: str):
-        super().__init__(Aggregate("count-distinct", expression))
-
-
-class Avg(Find):
-    def __init__(self, expression: str):
-        super().__init__(Aggregate("avg", expression))
-
-
-class Median(Find):
-    def __init__(self, expression: str):
-        super().__init__(Aggregate("median", expression))
-
-
-class Variance(Find):
-    def __init__(self, expression: str):
-        super().__init__(Aggregate("variance", expression))
-
-
-class Stddev(Find):
-    def __init__(self, expression: str):
-        super().__init__(Aggregate("stddev", expression))
-
-
-class Distinct(Find):
-    def __init__(self, expression: str):
-        super().__init__(Aggregate("distinct", expression))
-
-
-class Rand(Find):
-    def __init__(self, expression: str, N: int):
-        super().__init__(Aggregate("rand", expression, str(N)))
-
-
-class Sample(Find):
-    def __init__(self, expression: str, N: int):
-        super().__init__(Aggregate("sample", expression, str(N)))
+# Dynamically create classes extending the Find clause but do aggregations
+Sum = _build_find_aggregation_class("sum")
+Min = _build_find_aggregation_class("min")
+Max = _build_find_aggregation_class("max")
+Count = _build_find_aggregation_class("count")
+CountDistinct = _build_find_aggregation_class("count-distinct")
+Avg = _build_find_aggregation_class("avg")
+Median = _build_find_aggregation_class("median")
+Variance = _build_find_aggregation_class("variance")
+Stddev = _build_find_aggregation_class("stddev")
+Distinct = _build_find_aggregation_class("distinct")
+Rand = _build_find_aggregation_class_with_argument("rand")
+Sample = _build_find_aggregation_class_with_argument("sample")
