@@ -9,6 +9,7 @@ from requests import HTTPError, Response, Session
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
+from xtdb.datalog import Clause, FindWhere
 from xtdb.exceptions import XTDBException
 from xtdb.orm import Base, Fn
 from xtdb.query import Query
@@ -175,12 +176,15 @@ class XTDBClient:
 
     def query(
         self,
-        query: Union[str, Query],
+        query: Union[str, Query, Clause],
         *,
         valid_time: Optional[datetime] = None,
         tx_time: Optional[datetime] = None,
         tx_id: Optional[int] = None,
     ) -> Union[List, Dict]:
+        if not isinstance(query, (str, Query)) and not issubclass(type(query), FindWhere):
+            raise XTDBException("Cannot query using incomplete clause")
+
         params = self._format_parameter("valid-time", valid_time)
         params = self._format_parameter("tx-time", tx_time, params)
         params = self._format_parameter("tx-id", tx_id, params)
