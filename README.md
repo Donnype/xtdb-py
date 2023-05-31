@@ -18,7 +18,7 @@
 You can install this project using pip:
 
 ```bash
-pip install xtdb
+$ pip install xtdb
 ```
 
 ## Usage
@@ -30,7 +30,7 @@ $ docker run -p 3000:3000 -d juxt/xtdb-standalone-rocksdb:1.21.0
 $ export XTDB_URI=http://localhost:3000/_xtdb
 ```
 
-### Using the client
+### Using the Client
 
 The `XTDBClient` supports the full [HTTP API spec](https://docs.xtdb.com/clients/http/).
 
@@ -48,7 +48,9 @@ The `XTDBClient` supports the full [HTTP API spec](https://docs.xtdb.com/clients
 {'name': 'fred', 'xt/id': '123'}
 ```
 
-### Datalog Query Support
+Take a look at the spec to see the full range of functionality that maps directly to the client.
+
+### Using the Datalog module
 
 The [datalog](xtdb/datalog.py) module also provides a layer to construct queries with more easily.
 Given the data from [the cities example](examples/cities) has been seeded:
@@ -65,7 +67,7 @@ Given the data from [the cities example](examples/cities) has been seeded:
 
 To see more datalog query examples, check out the [unit tests](tests/test_datalog.py).
 
-### Using the ORM
+### Using the ORM and Session
 
 Below is an example of how to use the ORM functionality.
 
@@ -109,20 +111,8 @@ This package also comes with an easy CLI tool to query XTDB.
 To query XTDB using a plain query you can run
 
 ```bash
-$ echo '{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}' | python -m xtdb | jq
-[
-  [
-    {
-      "xt/id": "123"
-      "name": "fred",
-      "somenil": null,
-      "somedict": {
-        "c": 3,
-        "a": "b"
-      },
-    }
-  ]
-]
+$ echo '{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}' | python -m xtdb
+[[{"name": "fred", "xt/id": "123"}]]
 ```
 
 To use a query file the command can be modified to the following:
@@ -130,20 +120,9 @@ To use a query file the command can be modified to the following:
 ```bash
 $ cat query.txt
 {:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}
-$ python -m xtdb < query.txt | jq
-[
-  [
-    {
-      "xt/id": "123"
-      "name": "fred",
-      "somenil": null,
-      "somedict": {
-        "c": 3,
-        "a": "b"
-      },
-    }
-  ]
-]
+$
+$ python -m xtdb < query.txt
+[[{"name": "fred", "xt/id": "123"}]]
 ```
 
 ## Contributing
