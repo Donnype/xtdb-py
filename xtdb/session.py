@@ -14,7 +14,7 @@ from xtdb.exceptions import XTDBException
 from xtdb.orm import Base, Fn
 from xtdb.query import Query
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("XTDB")
 
 
 @dataclass
@@ -97,8 +97,12 @@ class XTDBClient:
         self._session.headers["Accept"] = "application/json"
         self._session.hooks["response"] = self._verify_response
 
+        logger.debug("Initialized HTTP session to %s", self.base_url)
+
     @staticmethod
     def _verify_response(response: Response, *args, **kwargs) -> None:
+        logger.debug('"%s %s" %s', response.request.method, response.request.url, response.status_code)
+
         try:
             response.raise_for_status()
         except HTTPError as e:
@@ -293,10 +297,11 @@ class XTDBSession:
         self._transaction.add(Operation.fn(function.identifier, *args))
 
     def commit(self) -> None:
-        if not self._transaction.operations:
+        if operation_count := len(self._transaction.operations) == 0:
             return
 
         try:
             self.client.submit_transaction(self._transaction)
+            logger.debug("Committed %s operations", operation_count)
         finally:
             self._transaction = Transaction()
