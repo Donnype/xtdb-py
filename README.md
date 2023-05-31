@@ -2,11 +2,16 @@
 
 # XTDB Python: A Python ORM for [XTDB](https://www.xtdb.com/)
 
+<div align="center">
+
+[![Python Versions](https://img.shields.io/pypi/pyversions/xtdb)](https://pypi.org/project/xtdb/)
+[![Stable Version](https://img.shields.io/pypi/v/xtdb?label=stable)](https://pypi.org/project/xtdb/#history)
 
 [![Tests](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml)
-[![Stable Version](https://img.shields.io/pypi/v/xtdb?label=stable)](https://pypi.org/project/xtdb/#history)
-[![Python Versions](https://img.shields.io/pypi/pyversions/xtdb)](https://pypi.org/project/xtdb/)
+[![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/Donnype/xtdb-py/blob/main/.pre-commit-config.yaml)
+[![License](https://img.shields.io/github/license/Donnype/xtdb-py)](https://github.com/Donnype/xtdb-py/blob/main/LICENSE)
 
+</div>
 
 ## Installation
 
@@ -29,22 +34,36 @@ $ export XTDB_URI=http://localhost:3000/_xtdb
 
 The `XTDBClient` supports the full [HTTP API spec](https://docs.xtdb.com/clients/http/).
 
-
 ```python3
-import os
-
-from xtdb.session import XTDBClient, Operation
-
-client = XTDBClient(os.environ["XTDB_URI"])
-client.submit_transaction([Operation.put({"xt/id": "123", "name": "fred"})])
-
-client.query('{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}')
-#  [[{'name': 'fred', 'xt/id': '123'}]]
-
-client.get_entity("123")
-#  {'name': 'fred', 'xt/id': '123'}
+>>> import os
+>>> from xtdb.session import XTDBClient, Operation
+>>>
+>>> client = XTDBClient(os.environ["XTDB_URI"])
+>>> client.submit_transaction([Operation.put({"xt/id": "123", "name": "fred"})])
+>>>
+>>> client.query('{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}')
+[[{'name': 'fred', 'xt/id': '123'}]]
+>>>
+>>> client.get_entity("123")
+{'name': 'fred', 'xt/id': '123'}
 ```
 
+### Datalog Query Support
+
+The [datalog](xtdb/datalog.py) module also provides a layer to construct queries with more easily.
+Given the data from [the cities example](examples/cities) has been seeded:
+```python3
+>>> from xtdb.datalog import Find, Where
+>>>
+>>> query = Find("(pull Country [*])") & Find("City") & (Where("City", "City/country", "Country") & Where("City", "City/name", '"Rome"'))
+>>> str(query)
+{:query {:find [ (pull Country [*]) City] :where [ [ City :City/country Country ] [ City :City/name "Rome" ]]}}
+>>>
+>>> client.query(query)
+[[{'type': 'Country', 'Country/name': 'Italy', 'xt/id': 'c095839f-031f-46ad-85e1-097f634ba4f0'}, '33aa7fa6-b752-4982-a772-d2dbaeda58ae']]
+```
+
+To see more datalog query examples, check out the [unit tests](tests/test_datalog.py).
 
 ### Using the ORM
 
@@ -78,8 +97,7 @@ with session:
 query = Query(TestEntity).where(TestEntity, name="test")
 result = session.query(query)
 
-result[0].dict()
-#  {"TestEntity/name": "test", "type": "TestEntity", "xt/id": "fe2a3ee0-9254-41dc-91cc-74ad9e2a16db"}
+result[0].dict() #  {"TestEntity/name": "test", "type": "TestEntity", "xt/id": "fe2a3ee0-9254-41dc-91cc-74ad9e2a16db"}
 ```
 
 To see more examples, check out the [examples directory](examples).

@@ -201,40 +201,39 @@ countries = [
     "United Kingdom",
 ]
 
-cities = [
-    [city.split(",")[0], int(city.split(",")[1]), city.split(",")[2]]
-    for city in (Path() / "cities.csv").read_text().splitlines()[1:]
-]
 
-country_map = {}
+def main():
+    cities = [
+        [city.split(",")[0], int(city.split(",")[1]), city.split(",")[2]]
+        for city in (Path() / "cities.csv").read_text().splitlines()[1:]
+    ]
 
-xtdb_session = XTDBSession(os.environ["XTDB_URI"])
+    country_map = {}
+    xtdb_session = XTDBSession(os.environ["XTDB_URI"])
 
-for country in countries:
-    country_entity = Country(name=country)
-    xtdb_session.put(country_entity)
-    country_map[country] = country_entity
+    with xtdb_session:
+        for country in countries:
+            country_entity = Country(name=country)
+            xtdb_session.put(country_entity)
+            country_map[country] = country_entity
 
-xtdb_session.commit()
+    city_map = {}
 
-city_map = {}
+    with xtdb_session:
+        for name, population, country_name in cities:
+            city_entity = City(name=name, population=population, country=country_map[str(country_name)])
+            xtdb_session.put(city_entity)
+            city_map[name] = city_entity
 
-for name, population, country_name in cities:
-    city_entity = City(name=name, population=population, country=country_map[str(country_name)])
-    xtdb_session.put(city_entity)
-    city_map[name] = city_entity
+    alfabet = "abcdefghijklmnopqrstuvwxyz"
+    alfabet += alfabet.upper()
 
-
-xtdb_session.commit()
-
-alfabet = "abcdefghijklmnopqrstuvwxyz"
-alfabet += alfabet.upper()
-
-
-for x in alfabet:
-    for y in alfabet:
-        city = list(city_map.values())[random.randint(0, len(city_map) - 1)]
-        xtdb_session.put(User(name=x + y, city=city, country=city.country))
+    with xtdb_session:
+        for x in alfabet:
+            for y in alfabet:
+                city = list(city_map.values())[random.randint(0, len(city_map) - 1)]
+                xtdb_session.put(User(name=x + y, city=city, country=city.country))
 
 
-xtdb_session.commit()
+if __name__ == "__main__":
+    main()
