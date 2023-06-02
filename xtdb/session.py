@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 from requests import HTTPError, Response, Session
-from requests.adapters import HTTPAdapter
+from requests.adapters import DEFAULT_POOLBLOCK, DEFAULT_POOLSIZE, HTTPAdapter
 from urllib3 import Retry
 
 from xtdb.datalog import Clause, FindWhere
@@ -88,12 +88,26 @@ class Transaction:
 
 
 class XTDBClient:
-    def __init__(self, base_url: str):
+    def __init__(
+        self,
+        base_url: str,
+        pool_connections: int = DEFAULT_POOLSIZE,
+        pool_maxsize: int = DEFAULT_POOLSIZE,
+        pool_block: bool = DEFAULT_POOLBLOCK,
+        retries: int = 6,
+        backoff_factor: float = 0.5,
+    ):
         self.base_url = base_url
-
         self._session = Session()
-        self._session.mount("http://", HTTPAdapter(max_retries=Retry(total=6, backoff_factor=0.5)))
-        self._session.mount("https://", HTTPAdapter(max_retries=Retry(total=6, backoff_factor=0.5)))
+
+        adapter = HTTPAdapter(
+            pool_connections=pool_connections,
+            pool_maxsize=pool_maxsize,
+            pool_block=pool_block,
+            max_retries=Retry(total=retries, backoff_factor=backoff_factor),
+        )
+        self._session.mount("http://", adapter)
+        self._session.mount("https://", adapter)
         self._session.headers["Accept"] = "application/json"
         self._session.hooks["response"] = self._verify_response
 
