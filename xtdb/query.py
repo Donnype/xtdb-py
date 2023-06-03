@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Type, Union
+from typing import List, Literal, Optional, Tuple, Type, Union
 
 from xtdb.datalog import (
     Avg,
@@ -14,6 +14,7 @@ from xtdb.datalog import (
     Min,
     Offset,
     Or,
+    OrderBy,
     Rand,
     Sample,
     Stddev,
@@ -55,6 +56,7 @@ class Query:
     _find: Optional[Clause] = None
     _where: Optional[Clause] = None
     _limit: Optional[Limit] = None
+    _order_by: Optional[OrderBy] = None
     _offset: Optional[Offset] = None
     _timeout: Optional[Timeout] = None
 
@@ -145,6 +147,11 @@ class Query:
 
         return self
 
+    def order_by(self, fields: List[Tuple[str, Literal["asc", "desc"]]]) -> "Query":
+        self._order_by = OrderBy(fields)
+
+        return self
+
     def limit(self, limit: int) -> "Query":
         self._limit = Limit(limit)
 
@@ -201,7 +208,7 @@ class Query:
     def _compile(self, *, separator=" ") -> str:
         where = self._where & Where(self.result_type.alias(), TYPE_FIELD, f'"{self.result_type.alias()}"')
         find = Find(f"(pull {self.result_type.alias()} [*])") if self._find is None else self._find
-        find_where = find & where & self._limit & self._offset & self._timeout
+        find_where = find & where & self._order_by & self._limit & self._offset & self._timeout
 
         return find_where.compile(separator=separator)
 

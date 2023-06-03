@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Union
+from typing import Any, List, Literal, Optional, Tuple, Union
 
 from xtdb.exceptions import XTDBException
 
@@ -209,6 +209,42 @@ class Find(QueryKey):
         return And([self, other], "find")
 
 
+class In(QueryKey):
+    def __init__(self, in_args: Union[str, List[str]], values: Union[str, List[str]]):
+        self.in_args = in_args
+        self.values = values
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        if isinstance(self.in_args, List):
+            expression = " ".join(self.in_args)
+            return f" :in [[{expression}]]"
+
+        return f" :in [{self.in_args}]"
+
+    def compile_values(self) -> str:
+        if isinstance(self.values, List):
+            expression = " ".join([f'"{value}"' for value in self.values])
+            return f"[{expression}]"
+
+        return self.values
+
+
+class OrderBy(QueryKey):
+    def __init__(self, fields: List[Tuple[str, Literal["asc", "desc"]]]):
+        if not all([field[1] in ["asc", "desc"] for field in fields]):
+            raise XTDBException("Only 'asc' and 'desc' allowed as ordering functions.")
+
+        self.fields = fields
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        expression = " ".join([self.compile_field(field) for field in self.fields])
+
+        return f" :order-by [{expression}]"
+
+    def compile_field(self, field: Tuple[str, Literal["asc", "desc"]]):
+        return f"[{field[0]} :{field[1]}]"
+
+
 class Limit(QueryKey):
     def __init__(self, limit: int):
         self.limit = limit
@@ -238,18 +274,28 @@ class FindWhere(QueryKey):
         self,
         find: Clause,
         where: Clause,
+        in_args: Optional[In] = None,
+        order_by: Optional[OrderBy] = None,
         limit: Optional[Limit] = None,
         offset: Optional[Offset] = None,
         timeout: Optional[Timeout] = None,
     ):
         self.find = find
         self.where = where
+        self.in_args = in_args
+        self.order_by = order_by
         self.limit = limit
         self.offset = offset
         self.timeout = timeout
 
     def compile(self, root: bool = True, *, separator=" ") -> str:
         q = f"{{:query {{{self.find.compile(separator=separator)} {self.where.compile(separator=separator)}"
+
+        if self.in_args is not None:
+            q += self.in_args.compile(separator=separator)
+
+        if self.order_by is not None:
+            q += self.order_by.compile(separator=separator)
 
         if self.limit is not None:
             q += self.limit.compile(separator=separator)
@@ -260,15 +306,22 @@ class FindWhere(QueryKey):
         if self.timeout is not None:
             q += self.timeout.compile(separator=separator)
 
+        if self.in_args is not None:
+            return q + f"}} {self.in_args.compile_values()}}}"
+
         return q + "}}"
 
     def _and(self, other: Clause) -> Clause:
+        if isinstance(other, In):
+            return FindWhere(self.find, self.where, other, self.order_by, self.limit, self.offset, self.timeout)
+        if isinstance(other, OrderBy):
+            return FindWhere(self.find, self.where, self.in_args, other, self.limit, self.offset, self.timeout)
         if isinstance(other, Limit):
-            return FindWhere(self.find, self.where, other, self.offset, self.timeout)
+            return FindWhere(self.find, self.where, self.in_args, self.order_by, other, self.offset, self.timeout)
         if isinstance(other, Offset):
-            return FindWhere(self.find, self.where, self.limit, other, self.timeout)
+            return FindWhere(self.find, self.where, self.in_args, self.order_by, self.limit, other, self.timeout)
         if isinstance(other, Timeout):
-            return FindWhere(self.find, self.where, self.limit, self.offset, other)
+            return FindWhere(self.find, self.where, self.in_args, self.order_by, self.limit, self.offset, other)
 
         raise XTDBException("And operator is not supported for find-where clauses")
 

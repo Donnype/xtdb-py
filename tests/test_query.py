@@ -37,6 +37,14 @@ def test_basic_field_where_clause():
     [ FirstEntity :type "FirstEntity" ]] :limit 4 :offset 0 :timeout 40}}"""
     )
 
+    query = query.order_by([("FirstEntity/name", "asc")])
+    assert (
+        query.format()
+        == """{:query {:find [(pull FirstEntity [*])] :where [
+    [ FirstEntity :FirstEntity/name "test" ]
+    [ FirstEntity :type "FirstEntity" ]] :order-by [[FirstEntity/name :asc]] :limit 4 :offset 0 :timeout 40}}"""
+    )
+
 
 def test_reference_field_where_clause():
     query = Query(FirstEntity).where(SecondEntity, first_entity=FirstEntity)

@@ -1,6 +1,6 @@
 import pytest
 
-from xtdb.datalog import Expression, Find, Sample, Sum, Where, _BaseAggregate
+from xtdb.datalog import Expression, Find, In, OrderBy, Sample, Sum, Where, _BaseAggregate
 from xtdb.exceptions import XTDBException
 
 
@@ -137,3 +137,21 @@ def test_find_where():
 
     with pytest.raises(XTDBException):
         (Where("a", "b", "c") | Where("1", "2", "3")) & Find("a")
+
+
+def test_in():
+    statement = In(["field", "other-field"], ["value", "other-value"])
+    assert statement.compile() == " :in [[field other-field]]"
+    assert statement.compile_values() == '["value" "other-value"]'
+
+    statement = In(["field", "..."], ["value", "other-value"])
+    assert statement.compile() == " :in [[field ...]]"
+    assert statement.compile_values() == '["value" "other-value"]'
+
+
+def test_order_by():
+    statement = OrderBy([("field_name", "asc"), ("test-name", "desc")])
+    assert statement.compile() == " :order-by [[field_name :asc] [test-name :desc]]"
+
+    with pytest.raises(XTDBException):
+        OrderBy([("field_name", "asc"), ("test-name", "esc")])
