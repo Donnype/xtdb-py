@@ -1,6 +1,6 @@
 import pytest
 
-from xtdb.datalog import Expression, Find, In, OrderBy, Sample, Sum, Where, _BaseAggregate
+from xtdb.datalog import Expression, Find, In, Limit, Offset, OrderBy, Sample, Sum, Timeout, Where, _BaseAggregate
 from xtdb.exceptions import XTDBException
 
 
@@ -129,6 +129,19 @@ def test_find_where():
     statement = Sum("a") & Sum("b") & Where("a", "b", "c")
     assert statement.compile() == "{:query {:find [ (sum a) (sum b)] :where [[ a :b c ]]}}"
 
+
+def test_find_where_complete():
+    statement = (
+        Find("a") & Where("a", "b", "c") & Limit(2) & Offset(0) & Timeout(29) & OrderBy([("b", "asc")]) & In("c", '"d"')
+    )
+
+    assert (
+        statement.compile()
+        == '{:query {:find [a] :where [[ a :b c ]] :in [c] :order-by [[b :asc]] :limit 2 :offset 0 :timeout 29} "d"}'
+    )
+
+
+def test_find_where_wrong_order():
     with pytest.raises(XTDBException):
         Find("a") & Where("a", "b", "c") & Where("1", "2", "3")
 
