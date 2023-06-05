@@ -55,8 +55,6 @@ class Clause:
 
 class And(Clause):
     def __init__(self, clauses: List[Clause], query_section: str = "where"):
-        super().__init__()
-
         self.clauses = clauses
         self.query_section = query_section
 
@@ -101,8 +99,6 @@ class And(Clause):
 
 class Or(Clause):
     def __init__(self, clauses: List[Clause]):
-        super().__init__()
-
         self.clauses = clauses
 
     def compile(self, root: bool = True, *, separator=" ") -> str:
@@ -131,8 +127,6 @@ class Or(Clause):
 
 class Where(Clause):
     def __init__(self, document: str, field: str, value: Any = ""):
-        super().__init__()
-
         self.document = document
         self.field = field
         self.value = value
@@ -146,6 +140,27 @@ class Where(Clause):
     def _or(self, other: Clause) -> Clause:
         if isinstance(other, And):
             raise XTDBException("Cannot | on a single where, use & instead")
+
+        return Or([self, other])
+
+
+class WherePredicate(Clause):
+    def __init__(self, operation: str, *args, bind: Optional[str] = None):
+        self.args = args
+        self.operation = operation
+        self.bind = bind
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        bind = self.bind or ""
+
+        if root:
+            return f":where [[ ({self.operation} {' '.join([str(arg) for arg in self.args])}) {bind}]]"
+
+        return f"[ ({self.operation} {' '.join(self.args)}) {bind}]"
+
+    def _or(self, other: Clause) -> Clause:
+        if isinstance(other, And):
+            raise XTDBException("Cannot | on a single predicate, use & instead")
 
         return Or([self, other])
 

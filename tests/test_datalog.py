@@ -1,6 +1,18 @@
 import pytest
 
-from xtdb.datalog import Expression, Find, In, Limit, OrderBy, Sample, Sum, Timeout, Where, _BaseAggregate
+from xtdb.datalog import (
+    Expression,
+    Find,
+    In,
+    Limit,
+    OrderBy,
+    Sample,
+    Sum,
+    Timeout,
+    Where,
+    WherePredicate,
+    _BaseAggregate,
+)
 from xtdb.exceptions import XTDBException
 
 
@@ -188,3 +200,34 @@ def test_order_by():
 
     with pytest.raises(XTDBException):
         OrderBy([("field_name", "asc"), ("test-name", "esc")])
+
+
+def test_where_predicate():
+    statement = WherePredicate("odd?", "b")
+    assert statement.compile() == ":where [[ (odd? b) ]]"
+
+    statement = WherePredicate("+", "1", "2", "b")
+    assert statement.compile() == ":where [[ (+ 1 2 b) ]]"
+
+    # From the docs
+    statement = WherePredicate("identity", "2", bind="x") & WherePredicate("+", "x", "2", bind="y")
+    assert statement.compile() == ":where [ [ (+ x 2) y] [ (identity 2) x]]"
+
+    statement = Find("a") & (Where("a", "b", "c") & WherePredicate("odd?", "c"))
+    assert statement.compile() == "{:query {:find [a] :where [ [ (odd? c) ] [ a :b c ]]}}"
+
+
+def test_range_predicate():
+    # From the docs
+    statement = WherePredicate(">", 18, "a")
+    assert statement.compile() == ":where [[ (> 18 a) ]]"
+
+
+def test_unification_predicate():
+    # From the docs
+    statement = WherePredicate("==", "a", "a2")
+    assert statement.compile() == ":where [[ (== a a2) ]]"
+
+    # From the docs
+    statement = WherePredicate("!=", "a", "a2")
+    assert statement.compile() == ":where [[ (!= a a2) ]]"
