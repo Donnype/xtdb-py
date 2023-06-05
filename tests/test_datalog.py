@@ -1,6 +1,6 @@
 import pytest
 
-from xtdb.datalog import Expression, Find, In, Limit, Offset, OrderBy, Sample, Sum, Timeout, Where, _BaseAggregate
+from xtdb.datalog import Expression, Find, In, Limit, OrderBy, Sample, Sum, Timeout, Where, _BaseAggregate
 from xtdb.exceptions import XTDBException
 
 
@@ -130,14 +130,34 @@ def test_find_where():
     assert statement.compile() == "{:query {:find [ (sum a) (sum b)] :where [[ a :b c ]]}}"
 
 
-def test_find_where_complete():
-    statement = (
-        Find("a") & Where("a", "b", "c") & Limit(2) & Offset(0) & Timeout(29) & OrderBy([("b", "asc")]) & In("c", '"d"')
-    )
+def test_find_where_in_complete():
+    statement = Find("a") & Where("a", "b", "c") & Limit(2) & Timeout(29) & OrderBy([("b", "asc")]) & In("c", "d")
 
+    # Scalar binding
     assert (
         statement.compile()
-        == '{:query {:find [a] :where [[ a :b c ]] :in [c] :order-by [[b :asc]] :limit 2 :offset 0 :timeout 29} "d"}'
+        == '{:query {:find [a] :where [[ a :b c ]] :in [c] :order-by [[b :asc]] :limit 2 :timeout 29} :in-args ["d"]}'
+    )
+
+    # Collection binding
+    statement = Find("a") & Where("a", "b", "c") & Limit(2) & OrderBy([("b", "asc")]) & In(["c", "..."], ["d", "e"])
+    assert (
+        statement.compile()
+        == '{:query {:find [a] :where [[ a :b c ]] :in [[c ...]] :order-by [[b :asc]] :limit 2} :in-args [["d" "e"]]}'
+    )
+
+    # Tuple binding
+    statement = Find("a") & Where("a", "b", "c") & Limit(2) & OrderBy([("b", "asc")]) & In(["c", "z"], ["d", "e"])
+    assert (
+        statement.compile()
+        == '{:query {:find [a] :where [[ a :b c ]] :in [[c z]] :order-by [[b :asc]] :limit 2} :in-args [["d" "e"]]}'
+    )
+
+    # Relation binding
+    statement = Find("a") & Where("a", "b", "c") & Limit(2) & In([["c", "z"]], [["d", "e"], ["f", "g"]])
+    assert (
+        statement.compile()
+        == '{:query {:find [a] :where [[ a :b c ]] :in [[[c z]]] :limit 2} :in-args [[["d" "e"] ["f" "g"]]]}'
     )
 
 
@@ -155,11 +175,11 @@ def test_find_where_wrong_order():
 def test_in():
     statement = In(["field", "other-field"], ["value", "other-value"])
     assert statement.compile() == " :in [[field other-field]]"
-    assert statement.compile_values() == '["value" "other-value"]'
+    assert statement.compile_values() == ' :in-args [["value" "other-value"]]'
 
     statement = In(["field", "..."], ["value", "other-value"])
     assert statement.compile() == " :in [[field ...]]"
-    assert statement.compile_values() == '["value" "other-value"]'
+    assert statement.compile_values() == ' :in-args [["value" "other-value"]]'
 
 
 def test_order_by():

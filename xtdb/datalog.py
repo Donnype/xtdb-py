@@ -210,23 +210,39 @@ class Find(QueryKey):
 
 
 class In(QueryKey):
-    def __init__(self, in_args: Union[str, List[str]], values: Union[str, List[str]]):
+    def __init__(self, in_args: Union[str, List[str], List[List[str]]], values: Union[str, List[str], List[List[str]]]):
+        if not in_args:
+            raise XTDBException("No in_arg supplied: cannot be empty")
+        if not values:
+            raise XTDBException("No values supplied: cannot be empty")
+
         self.in_args = in_args
         self.values = values
 
     def compile(self, root: bool = True, *, separator=" ") -> str:
-        if isinstance(self.in_args, List):
-            expression = " ".join(self.in_args)
+        if isinstance(self.in_args, str):
+            return f" :in [{self.in_args}]"
+
+        if isinstance(self.in_args[0], str):
+            expression = " ".join([in_arg for in_arg in self.in_args if isinstance(in_arg, str)])
             return f" :in [[{expression}]]"
 
-        return f" :in [{self.in_args}]"
+        nested_args = [" ".join(in_arg) for in_arg in self.in_args if isinstance(in_arg, List)]
+        expression = " ".join(nested_args)
+
+        return f" :in [[[{expression}]]]"
 
     def compile_values(self) -> str:
-        if isinstance(self.values, List):
-            expression = " ".join([f'"{value}"' for value in self.values])
-            return f"[{expression}]"
+        if not isinstance(self.values, List):
+            return f' :in-args ["{self.values}"]'
 
-        return self.values
+        if not isinstance(self.values[0], List):
+            expression = " ".join([f'"{value}"' for value in self.values])
+            return f" :in-args [[{expression}]]"
+
+        nested_values = ["[" + " ".join([f'"{value}"' for value in values]) + "]" for values in self.values]
+        expression = " ".join(nested_values)
+        return f" :in-args [[{expression}]]"
 
 
 class OrderBy(QueryKey):
@@ -307,7 +323,7 @@ class FindWhere(QueryKey):
             q += self.timeout.compile(separator=separator)
 
         if self.in_args is not None:
-            return q + f"}} {self.in_args.compile_values()}}}"
+            return q + f"}}{self.in_args.compile_values()}}}"
 
         return q + "}}"
 

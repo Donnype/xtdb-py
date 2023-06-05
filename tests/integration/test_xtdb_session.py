@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from tests.conftest import FirstEntity, FourthEntity, SecondEntity, ThirdEntity
+from xtdb.datalog import Find, In, Limit, Timeout, Where
 from xtdb.exceptions import XTDBException
 from xtdb.orm import Fn
 from xtdb.query import Query, Var
@@ -464,3 +465,22 @@ def test_transaction_api(xtdb_session: XTDBSession):
     xtdb_session.delete(second)
     xtdb_session.delete(test)
     xtdb_session.commit()
+
+
+def test_query_limit_timeout_where_in(xtdb_session: XTDBSession):
+    with xtdb_session:
+        entity = FirstEntity(name="test")
+        xtdb_session.put(entity)
+
+    query = (
+        Find("FirstEntity")
+        & Where("FirstEntity", "FirstEntity/name", "name")
+        & Limit(2)
+        & Timeout(29)
+        & In("name", "test")
+    )
+    result = xtdb_session.client.query(query)
+    assert result == [[entity.id]]
+
+    with xtdb_session:
+        xtdb_session.delete(entity)
