@@ -48,6 +48,17 @@ def test_or_clauses():
     assert statement.compile() == ":where [(or [ 1 :2 3 ] [ a :b c ])]"
 
 
+def test_not_clauses():
+    statement = ~Where("a", "b", "c")
+    assert statement.compile() == ":where [(not [ a :b c ])]"
+
+    statement = ~(Where("a", "b", "c") & Where("1", "2", "3"))
+    assert statement.compile() == ":where [(not [ 1 :2 3 ] [ a :b c ])]"
+
+    statement = ~(Where("a", "b", "c") & Where("1", "2", "3") & Where("x", "y"))
+    assert statement.compile() == ":where [(not [ 1 :2 3 ] [ a :b c ] [ x :y  ])]"
+
+
 def test_where_or_clauses():
     statement = Where("a", "b", "c") & Where("1", "2", "3") | Where("x", "y", "z") & Where("9", "8", "7")
     assert statement.compile() == ":where [(or (and [ 1 :2 3 ] [ a :b c ]) (and [ 9 :8 7 ] [ x :y z ]))]"
@@ -124,6 +135,12 @@ def test_find_where():
     statement = Find("a") & (Where("a", "b", "c") & Where("1", "2", "3"))
     assert statement.compile() == "{:query {:find [a] :where [ [ 1 :2 3 ] [ a :b c ]]}}"
 
+    statement = Find("a") & (Where("a", "b", "c") | Where("1", "2", "3"))
+    assert statement.compile() == "{:query {:find [a] :where [(or [ 1 :2 3 ] [ a :b c ])]}}"
+
+    statement = Find("a") & Find("b") & (Where("a", "b", "c") | Where("1", "2", "3"))
+    assert statement.compile() == "{:query {:find [ a b] :where [(or [ 1 :2 3 ] [ a :b c ])]}}"
+
     statement = (
         Find("a")
         & Sample("field", 12)
@@ -140,6 +157,11 @@ def test_find_where():
 
     statement = Sum("a") & Sum("b") & Where("a", "b", "c")
     assert statement.compile() == "{:query {:find [ (sum a) (sum b)] :where [[ a :b c ]]}}"
+
+
+def test_find_where_not():
+    statement = Sum("a") & Sum("b") & ~(Where("a", "b", "c") & Where("x", "y", "z"))
+    assert statement.compile() == "{:query {:find [ (sum a) (sum b)] :where [(not [ a :b c ] [ x :y z ])]}}"
 
 
 def test_find_where_in_complete():

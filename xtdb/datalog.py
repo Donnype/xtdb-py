@@ -52,6 +52,9 @@ class Clause:
 
         raise NotImplementedError
 
+    def __invert__(self):
+        raise NotImplementedError
+
 
 class And(Clause):
     def __init__(self, clauses: List[Clause], query_section: str = "where"):
@@ -91,10 +94,13 @@ class And(Clause):
             raise XTDBException("Cannot perform a where-find. User find-where instead.")
         if self.query_section == "find" and isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
-        if self.query_section == "find" and isinstance(other, Where):
+        if self.query_section == "find" and isinstance(other, (Where, Or, Not)):
             return FindWhere(self, other)
 
         return And(self.clauses + [other], self.query_section)
+
+    def __invert__(self):
+        return Not(self.clauses)
 
 
 class Or(Clause):
@@ -124,6 +130,37 @@ class Or(Clause):
     def _or(self, other: Clause) -> Clause:
         return Or(self.clauses + [other])
 
+    def __invert__(self):
+        raise XTDBException("Cannot use ~ on or clauses")
+
+
+class Not(Clause):
+    def __init__(self, clauses: List[Clause]):
+        self.clauses = clauses
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        collected = []
+
+        for clause in self.clauses:
+            collected.append(clause.compile(root=False, separator=separator))
+
+        if all(clause.idempotent for clause in self.clauses):
+            collected = list(set(collected))
+
+        if all(clause.commutative for clause in self.clauses):
+            collected = sorted(collected)
+
+        if root:
+            return f":where [(not{separator}{separator.join(collected)})]"
+
+        return f"(not{separator}{separator.join(collected)})"
+
+    def _or(self, other: Clause) -> Clause:
+        return Or(self.clauses + [other])
+
+    def __invert__(self):
+        return And(self.clauses)
+
 
 class Where(Clause):
     def __init__(self, document: str, field: str, value: Any = ""):
@@ -142,6 +179,9 @@ class Where(Clause):
             raise XTDBException("Cannot | on a single where, use & instead")
 
         return Or([self, other])
+
+    def __invert__(self):
+        return Not([self])
 
 
 class WherePredicate(Clause):
@@ -163,6 +203,9 @@ class WherePredicate(Clause):
             raise XTDBException("Cannot | on a single predicate, use & instead")
 
         return Or([self, other])
+
+    def __invert__(self):
+        return Not([self])
 
 
 class Expression:
@@ -201,6 +244,9 @@ class QueryKey(Clause):
     def _and(self, other: Clause) -> Clause:
         return And([self, other])
 
+    def __invert__(self):
+        raise XTDBException("Cannot use ~ on query keys")
+
 
 class Find(QueryKey):
     commutative = False
@@ -218,7 +264,7 @@ class Find(QueryKey):
     def _and(self, other: Clause) -> Clause:
         if isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
-        if isinstance(other, Where):
+        if isinstance(other, (Where, Or, Not)):
             return FindWhere(self, other)
 
         return And([self, other], "find")
