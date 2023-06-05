@@ -84,7 +84,7 @@ class And(Clause):
         return collected
 
     def _or(self, other: Clause) -> "Clause":
-        if isinstance(other, Where):
+        if isinstance(other, (Where, WherePredicate)):
             raise XTDBException("Cannot | on a single where, use & instead")
 
         return Or([self, other])
@@ -94,7 +94,7 @@ class And(Clause):
             raise XTDBException("Cannot perform a where-find. User find-where instead.")
         if self.query_section == "find" and isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
-        if self.query_section == "find" and isinstance(other, (Where, Or, Not)):
+        if self.query_section == "find" and isinstance(other, (Where, Or, Not, WherePredicate)):
             return FindWhere(self, other)
 
         return And(self.clauses + [other], self.query_section)
@@ -264,7 +264,7 @@ class Find(QueryKey):
     def _and(self, other: Clause) -> Clause:
         if isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
-        if isinstance(other, (Where, Or, Not)):
+        if isinstance(other, (Where, Or, Not, WherePredicate)):
             return FindWhere(self, other)
 
         return And([self, other], "find")
