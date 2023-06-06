@@ -3,6 +3,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from json import JSONDecodeError
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 from requests import HTTPError, Response, Session
@@ -98,20 +99,28 @@ class XTDBClient:
         backoff_factor: float = 0.5,
     ):
         self.base_url = base_url
-        self._session = Session()
-
-        adapter = HTTPAdapter(
+        self.adapter = HTTPAdapter(
             pool_connections=pool_connections,
             pool_maxsize=pool_maxsize,
             pool_block=pool_block,
-            max_retries=Retry(total=retries, backoff_factor=backoff_factor),
+            max_retries=Retry(total=retries, backoff_factor=backoff_factor, connect=3),
         )
-        self._session.mount("http://", adapter)
-        self._session.mount("https://", adapter)
-        self._session.headers["Accept"] = "application/json"
-        self._session.hooks["response"] = self._verify_response
+        self._session = self.get_session()
 
-        logger.debug("Initialized HTTP session to %s", self.base_url)
+    def get_session(self) -> Session:
+        session = Session()
+
+        session.mount("http://", self.adapter)
+        session.mount("https://", self.adapter)
+        session.headers["Accept"] = "application/json"
+        session.hooks["response"] = self._verify_response
+
+        logger.debug("Initialized new HTTP session")
+
+        return session
+
+    def refresh(self):
+        self._session = self.get_session()
 
     @staticmethod
     def _verify_response(response: Response, *args, **kwargs) -> None:
@@ -207,9 +216,15 @@ class XTDBClient:
         params = self._format_parameter("tx-time", tx_time, params)
         params = self._format_parameter("tx-id", tx_id, params)
 
-        return self._session.post(
-            f"{self.base_url}/query", str(query), params=params, headers={"Content-Type": "application/edn"}
-        ).json()
+        try:
+            return self._session.post(
+                f"{self.base_url}/query", str(query), params=params, headers={"Content-Type": "application/edn"}
+            ).json()
+        except JSONDecodeError as e:
+            if e.msg == "Expecting value":
+                # Empty bodies are returned when you do strange queries such as Sum(x) where x is not numerical.
+                raise XTDBException("Bad XTDB response: query probably failed") from e
+            raise
 
     def await_transaction(self, tx_id: int, timeout: Optional[int] = None) -> None:
         params = self._format_parameter("timeout", timeout)
@@ -229,7 +244,7 @@ class XTDBClient:
 
         return self._session.get(f"{self.base_url}/tx-log", params=params).json()
 
-    def submit_transaction(self, transaction: Union[Transaction, List]) -> None:
+    def submit_tx(self, transaction: Union[Transaction, List]) -> None:
         if isinstance(transaction, list):
             transaction = Transaction(operations=transaction)
 
@@ -315,7 +330,7 @@ class XTDBSession:
             return
 
         try:
-            self.client.submit_transaction(self._transaction)
+            self.client.submit_tx(self._transaction)
             logger.debug("Committed %s operations", operation_count)
         finally:
             self._transaction = Transaction()

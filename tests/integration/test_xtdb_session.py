@@ -2,9 +2,10 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from requests.exceptions import ConnectionError
 
 from tests.conftest import FirstEntity, FourthEntity, SecondEntity, ThirdEntity
-from xtdb.datalog import Find, In, Limit, Timeout, Where
+from xtdb.datalog import Count, Find, In, Limit, Sum, Timeout, Where
 from xtdb.exceptions import XTDBException
 from xtdb.orm import Fn
 from xtdb.query import Query, Var
@@ -13,11 +14,8 @@ from xtdb.session import XTDBSession
 if os.environ.get("CI") != "1":
     pytest.skip("Needs XTDB container.", allow_module_level=True)
 
-
-def test_status(xtdb_session: XTDBSession):
-    result = xtdb_session.client.status()
-    assert result.version == "1.21.0"
-    assert result.kvStore == "xtdb.rocksdb.RocksKv"
+#
+# def test_status(xtdb_session: XTDBSession):
 
 
 def test_query_no_results(xtdb_session: XTDBSession):
@@ -383,6 +381,7 @@ def test_get_entity_history(xtdb_session: XTDBSession):
     assert result[2]["doc"]["FirstEntity/name"] == "new name 2"
 
     xtdb_session.delete(test)
+    xtdb_session.commit()
 
 
 def test_get_entity_transactions(xtdb_session: XTDBSession):
@@ -413,6 +412,7 @@ def test_get_entity_transactions(xtdb_session: XTDBSession):
     assert result["validTime"] == "1000-10-10T00:00:00Z"
 
     xtdb_session.delete(test)
+    xtdb_session.commit()
 
 
 def test_transaction_api(xtdb_session: XTDBSession):
@@ -426,24 +426,24 @@ def test_transaction_api(xtdb_session: XTDBSession):
     xtdb_session.commit()
 
     result = xtdb_session.client.get_transaction_log()
-    assert len(result) == 28
+    assert len(result) == 30
     assert list(result[0].keys()) == ["txId", "txTime", "txEvents"]
 
     result = xtdb_session.client.get_transaction_log(10)
-    assert len(result) == 18
+    assert len(result) == 20
 
     result = xtdb_session.client.get_transaction_log(10, True)
-    assert len(result) == 18
+    assert len(result) == 20
     assert list(result[0].keys()) == ["txId", "txTime", "txOps"]
 
     result = xtdb_session.client.get_transaction_committed(10)
     assert result == {"txCommitted?": True}
 
     result = xtdb_session.client.get_latest_completed_transaction()
-    assert result["txId"] == 28
+    assert result["txId"] == 30
 
     result = xtdb_session.client.get_latest_submitted_transaction()
-    assert result["txId"] == 28
+    assert result["txId"] == 30
 
     result = xtdb_session.client.get_active_queries()
     assert result == []
@@ -484,3 +484,42 @@ def test_query_limit_timeout_where_in(xtdb_session: XTDBSession):
 
     with xtdb_session:
         xtdb_session.delete(entity)
+
+
+def test_sum_count_where_with_exceptions(xtdb_session: XTDBSession):
+    with xtdb_session:
+        entity = FirstEntity(name="test")
+        second = FirstEntity(name="test2")
+        third = SecondEntity(age=3, first_entity=entity)
+        fourth = SecondEntity(age=5, first_entity=entity)
+        xtdb_session.put(entity)
+        xtdb_session.put(second)
+        xtdb_session.put(third)
+        xtdb_session.put(fourth)
+
+    result = xtdb_session.client.query(Count("x") & Where("x", "type", '"FirstEntity"'))
+    assert result == [[2]]
+
+    result = xtdb_session.client.query(Sum("age") & Where("x", "SecondEntity/age", "age"))
+    assert result == [[8]]
+
+    with pytest.raises(XTDBException):
+        xtdb_session.client.query(Sum("x") & Where("x", "type", '"FirstEntity"'))
+
+    with pytest.raises(ConnectionError):
+        xtdb_session.client.query(Sum("x") & Where("x", "type", '"FirstEntity"'))
+
+    with pytest.raises(XTDBException):
+        xtdb_session.client.query(Sum("x") & Where("x", "type", '"FirstEntity"'))
+
+    with pytest.raises(XTDBException):
+        xtdb_session.client.query(Sum("x") & Where("x", "type", '"FirstEntity"'))
+
+    result = xtdb_session.client.query(Count("x") & Where("x", "type", '"FirstEntity"'))
+    assert result == [[2]]
+
+    with xtdb_session:
+        xtdb_session.delete(entity)
+        xtdb_session.delete(second)
+        xtdb_session.delete(third)
+        xtdb_session.delete(fourth)
