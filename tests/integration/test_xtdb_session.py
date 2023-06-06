@@ -512,11 +512,12 @@ def test_sum_count_where_with_exceptions(xtdb_session: XTDBSession):
     with pytest.raises(XTDBException):
         xtdb_session.client.query(Sum("x") & Where("x", "type", '"FirstEntity"'))
 
-    with pytest.raises(XTDBException):
-        xtdb_session.client.query(Sum("x") & Where("x", "type", '"FirstEntity"'))
-
     result = xtdb_session.client.query(Count("x") & Where("x", "type", '"FirstEntity"'))
     assert result == [[2]]
+
+    with pytest.raises(XTDBException):
+        xtdb_session.client.refresh()
+        xtdb_session.client.query(Sum("x") & Where("x", "type", '"FirstEntity"'))
 
     with xtdb_session:
         xtdb_session.delete(entity)
