@@ -253,13 +253,21 @@ class XTDBClient:
 
         return self._session.get(f"{self.base_url}/tx-log", params=params).json()
 
-    def submit_tx(self, transaction: Union[Transaction, List]) -> None:
+    def submit_tx(self, transaction: Union[Transaction, List], tries: int = 0) -> None:
         if isinstance(transaction, list):
             transaction = Transaction(operations=transaction)
 
-        res = self._session.post(
-            f"{self.base_url}/submit-tx", transaction.json(), headers={"Content-Type": "application/json"}
-        )
+        try:
+            res = self._session.post(
+                f"{self.base_url}/submit-tx", transaction.json(), headers={"Content-Type": "application/json"}
+            )
+        except ConnectionError:
+            if tries > 0:
+                raise
+
+            # Bad queries cleave connections in a bad state, which is fixed by creating a new requests.Session()
+            self.refresh()
+            return self.submit_tx(transaction, tries=1)
 
         self.await_transaction(res.json()["txId"])
 
