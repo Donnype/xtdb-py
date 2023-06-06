@@ -52,8 +52,8 @@ Take a look at the spec to see the full range of functionality that maps directl
 
 ### Using the Datalog module
 
-The [datalog](xtdb/datalog.py) module also provides a layer to construct queries with more easily.
-Given the data from [the cities example](examples/cities) has been seeded:
+The [datalog](https://github.com/Donnype/xtdb-py/blob/main/xtdb/datalog.py) module also provides a layer to construct queries with more easily.
+Given the data from [the cities example](https://github.com/Donnype/xtdb-py/blob/main/examples/cities) has been seeded:
 ```python3
 >>> from xtdb.datalog import Find, Where
 >>>
@@ -65,7 +65,7 @@ Given the data from [the cities example](examples/cities) has been seeded:
 [[{'type': 'Country', 'Country/name': 'Italy', 'xt/id': 'c095839f-031f-46ad-85e1-097f634ba4f0'}, '33aa7fa6-b752-4982-a772-d2dbaeda58ae']]
 ```
 
-To see more datalog query examples, check out the [unit tests](tests/test_datalog.py).
+To see more datalog query examples, check out the [unit tests](https://github.com/Donnype/xtdb-py/blob/main/tests/test_datalog.py).
 
 ### Using the ORM and Session
 
@@ -102,7 +102,7 @@ result = session.query(query)
 result[0].dict() #  {"TestEntity/name": "test", "type": "TestEntity", "xt/id": "fe2a3ee0-9254-41dc-91cc-74ad9e2a16db"}
 ```
 
-To see more examples, check out the [examples directory](examples).
+To see more examples, check out the [examples directory](https://github.com/Donnype/xtdb-py/blob/main/examples).
 Don't hesitate to add your own examples!
 
 ### Using the CLI for querying
