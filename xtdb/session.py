@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 from requests import HTTPError, Response, Session
 from requests.adapters import DEFAULT_POOLBLOCK, DEFAULT_POOLSIZE, HTTPAdapter
+from requests.exceptions import ConnectionError
 from urllib3 import Retry
 
 from xtdb.datalog import Clause, FindWhere
@@ -208,6 +209,7 @@ class XTDBClient:
         valid_time: Optional[datetime] = None,
         tx_time: Optional[datetime] = None,
         tx_id: Optional[int] = None,
+        tries: int = 0,
     ) -> Union[List, Dict]:
         if not isinstance(query, (str, Query)) and not issubclass(type(query), FindWhere):
             raise XTDBException("Cannot query using incomplete clause")
@@ -225,6 +227,13 @@ class XTDBClient:
                 # Empty bodies are returned when you do strange queries such as Sum(x) where x is not numerical.
                 raise XTDBException("Bad XTDB response: query probably failed") from e
             raise
+        except ConnectionError:
+            if tries > 0:
+                raise
+
+            # Bad queries cleave connections in a bad state, which is fixed by creating a new requests.Session()
+            self.refresh()
+            return self.query(query, valid_time=valid_time, tx_time=tx_time, tx_id=tx_id, tries=1)
 
     def await_transaction(self, tx_id: int, timeout: Optional[int] = None) -> None:
         params = self._format_parameter("timeout", timeout)

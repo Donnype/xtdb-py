@@ -2,7 +2,6 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from requests.exceptions import ConnectionError
 
 from tests.conftest import FirstEntity, FourthEntity, SecondEntity, ThirdEntity
 from xtdb.datalog import Count, Find, In, Limit, Sum, Timeout, Where
@@ -506,7 +505,7 @@ def test_sum_count_where_with_exceptions(xtdb_session: XTDBSession):
     with pytest.raises(XTDBException):
         xtdb_session.client.query(Sum("x") & Where("x", "type", '"FirstEntity"'))
 
-    with pytest.raises(ConnectionError):
+    with pytest.raises(XTDBException):
         xtdb_session.client.query(Sum("x") & Where("x", "type", '"FirstEntity"'))
 
     with pytest.raises(XTDBException):
@@ -516,7 +515,6 @@ def test_sum_count_where_with_exceptions(xtdb_session: XTDBSession):
     assert result == [[2]]
 
     with pytest.raises(XTDBException):
-        xtdb_session.client.refresh()
         xtdb_session.client.query(Sum("x") & Where("x", "type", '"FirstEntity"'))
 
     with xtdb_session:
