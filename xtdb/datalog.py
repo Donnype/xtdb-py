@@ -94,7 +94,7 @@ class And(Clause):
             raise XTDBException("Cannot perform a where-find. User find-where instead.")
         if self.query_section == "find" and isinstance(other, And) and other.query_section != "find":
             return FindWhere(self, other)
-        if self.query_section == "find" and isinstance(other, (Where, Or, Not, WherePredicate)):
+        if self.query_section == "find" and isinstance(other, (Where, Or, Not, NotJoin, WherePredicate)):
             return FindWhere(self, other)
 
         return And(self.clauses + [other], self.query_section)
@@ -160,6 +160,35 @@ class Not(Clause):
 
     def __invert__(self):
         return And(self.clauses)
+
+
+class NotJoin(Clause):
+    def __init__(self, variable: str, clauses: Optional[List] = None):
+        self.variable = variable
+        self.clauses = clauses or []
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        collected = []
+
+        for clause in self.clauses:
+            collected.append(clause.compile(root=False, separator=separator))
+
+        if all(clause.idempotent for clause in self.clauses):
+            collected = list(set(collected))
+
+        if all(clause.commutative for clause in self.clauses):
+            collected = sorted(collected)
+
+        if root:
+            return f":where [(not-join{separator}[{self.variable}] {separator.join(collected)})]"
+
+        return f"(not-join{separator}[{self.variable}] {separator.join(collected)})"
+
+    def _and(self, other: Clause) -> Clause:
+        return NotJoin(self.variable, self.clauses + [other])
+
+    def __invert__(self):
+        raise XTDBException("Cannot use ~ on not-join")
 
 
 class Where(Clause):

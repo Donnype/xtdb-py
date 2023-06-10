@@ -5,6 +5,7 @@ from xtdb.datalog import (
     Find,
     In,
     Limit,
+    NotJoin,
     OrderBy,
     Sample,
     Sum,
@@ -253,3 +254,18 @@ def test_unification_predicate():
     # From the docs
     statement = WherePredicate("!=", "a", "a2")
     assert statement.compile() == ":where [[ (!= a a2) ]]"
+
+
+def test_not_join():
+    # From the docs
+    statement = Where("e", "xt/id") & (NotJoin("e") & Where("e", "last-name", "n"))
+    assert statement.compile() == ":where [ (not-join [e] [ e :last-name n ]) [ e :xt/id  ]]"
+
+    statement = Where("e", "xt/id") & (NotJoin("e") & (Where("e", "last-name", "n") & Where("e", "name", "n")))
+    assert statement.compile() == ":where [ (not-join [e]  [ e :last-name n ] [ e :name n ]) [ e :xt/id  ]]"
+
+    statement = Where("e", "xt/id") & (NotJoin("e") & Where("e", "last-name", "n") & Where("e", "name", "n"))
+    assert statement.compile() == ":where [ (not-join [e] [ e :last-name n ] [ e :name n ]) [ e :xt/id  ]]"
+
+    statement = Where("e", "xt/id") & NotJoin("e") & Where("e", "last-name", "n") & Where("e", "name", "n")
+    assert statement.compile() == ":where [ (not-join [e] ) [ e :last-name n ] [ e :name n ] [ e :xt/id  ]]"
