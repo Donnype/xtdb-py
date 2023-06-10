@@ -7,6 +7,7 @@ from xtdb.datalog import (
     Limit,
     NotJoin,
     OrderBy,
+    OrJoin,
     Sample,
     Sum,
     Timeout,
@@ -269,3 +270,17 @@ def test_not_join():
 
     statement = Where("e", "xt/id") & NotJoin("e") & Where("e", "last-name", "n") & Where("e", "name", "n")
     assert statement.compile() == ":where [ (not-join [e] ) [ e :last-name n ] [ e :name n ] [ e :xt/id  ]]"
+
+
+def test_or_join():
+    statement = Where("e", "xt/id") & (OrJoin("e") & Where("e", "last-name", "n"))
+    assert statement.compile() == ":where [ (or-join [e] [ e :last-name n ]) [ e :xt/id  ]]"
+
+    statement = Where("e", "xt/id") & (OrJoin("e") & (Where("e", "last-name", "n") & Where("e", "name", "n")))
+    assert statement.compile() == ":where [ (or-join [e]  [ e :last-name n ] [ e :name n ]) [ e :xt/id  ]]"
+
+    statement = Where("e", "xt/id") & (OrJoin("e") & Where("e", "last-name", "n") & Where("e", "name", "n"))
+    assert statement.compile() == ":where [ (or-join [e] [ e :last-name n ] [ e :name n ]) [ e :xt/id  ]]"
+
+    statement = Where("e", "xt/id") & OrJoin("e") & Where("e", "last-name", "n") & Where("e", "name", "n")
+    assert statement.compile() == ":where [ (or-join [e] ) [ e :last-name n ] [ e :name n ] [ e :xt/id  ]]"

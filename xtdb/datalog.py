@@ -191,6 +191,35 @@ class NotJoin(Clause):
         raise XTDBException("Cannot use ~ on not-join")
 
 
+class OrJoin(Clause):
+    def __init__(self, variable: str, clauses: Optional[List] = None):
+        self.variable = variable
+        self.clauses = clauses or []
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        collected = []
+
+        for clause in self.clauses:
+            collected.append(clause.compile(root=False, separator=separator))
+
+        if all(clause.idempotent for clause in self.clauses):
+            collected = list(set(collected))
+
+        if all(clause.commutative for clause in self.clauses):
+            collected = sorted(collected)
+
+        if root:
+            return f":where [(or-join{separator}[{self.variable}] {separator.join(collected)})]"
+
+        return f"(or-join{separator}[{self.variable}] {separator.join(collected)})"
+
+    def _and(self, other: Clause) -> Clause:
+        return OrJoin(self.variable, self.clauses + [other])
+
+    def __invert__(self):
+        raise XTDBException("Cannot use ~ on or-join")
+
+
 class Where(Clause):
     def __init__(self, document: str, field: str, value: Any = ""):
         self.document = document
