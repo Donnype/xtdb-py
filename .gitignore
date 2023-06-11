@@ -438,3 +438,4 @@ $RECYCLE.BIN/
 **.db
 .env
 dist
+**/generated
