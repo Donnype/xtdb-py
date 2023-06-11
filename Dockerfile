@@ -13,7 +13,7 @@ ENV PATH="/home/$USER/.local/bin:/home/$USER/xtdb-py/.venv/bin:${PATH}" \
     POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=true
 
-RUN --mount=type=cache,target=/root/.cache pip install --user poetry==1.2.0
+RUN --mount=type=cache,target=/root/.cache pip install --user poetry==1.4.2
 
 COPY --chown=$USER:$USER ./pyproject.toml ./poetry.lock ./
 RUN --mount=type=cache,target=/root/.cache poetry install --with dev --no-root
