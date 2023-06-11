@@ -40,7 +40,7 @@ jobs:
         run: poetry install --with docs
 
       - name: Compile static HTML
-        run: sphinx-build -b html docs/source docs/_build
+        run: python -m sphinx.cmd.build -b html docs/source docs/_build
 
       - name: Setup Pages
         uses: actions/configure-pages@v2
