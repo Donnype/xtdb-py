@@ -146,4 +146,3 @@ $ make done   # Run all of the above
 
 The CI runs these checks as well.
 Check out the [project page](https://github.com/users/Donnype/projects/1) for issues and features to work on.
-

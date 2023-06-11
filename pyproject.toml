@@ -56,6 +56,9 @@ target-version = "py38"
 # Add "Example" to allowed code comments
 task-tags = ["Example", "todo", "TODO", "FIXME"]
 
+[tool.ruff.per-file-ignores]
+"conf.py" = ["INP", "PTH", "A"]
+
 [tool.codespell]
 ignore-words-list = 'edn,juxt,Nomes'
 skip = '*.csv'

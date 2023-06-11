@@ -9,4 +9,3 @@ API Reference
    xtdb.orm
    xtdb.query
    xtdb.exceptions
-
