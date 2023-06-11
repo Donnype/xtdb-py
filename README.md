@@ -13,6 +13,9 @@
 
 </div>
 
+Check out [the documentation](https://donnype.github.io/xtdb-py/) for a more complete documentation of the package.
+
+
 ## Installation
 
 You can install this project using pip:
@@ -20,6 +23,7 @@ You can install this project using pip:
 ```bash
 $ pip install xtdb
 ```
+
 
 ## Usage
 
