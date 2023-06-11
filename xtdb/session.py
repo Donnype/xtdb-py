@@ -1,3 +1,7 @@
+"""
+A module containing all logic related to connecting to an XTDB node and managing transactional scope.
+"""
+
 import json
 import logging
 from dataclasses import dataclass, field

@@ -1,3 +1,7 @@
+"""
+A module containing the logic to generate XTDB queries using the ORM models.
+"""
+
 from dataclasses import dataclass
 from typing import List, Literal, Optional, Tuple, Type, Union
 

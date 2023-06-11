@@ -1,3 +1,7 @@
+"""
+This module contains base classes for the creation of ORM models.
+"""
+
 import uuid
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Type

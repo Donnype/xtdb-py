@@ -1,17 +1,4 @@
-![Logo](https://raw.githubusercontent.com/Donnype/xtdb-py/main/docs/source/_static/logo.png)
-
-# XTDB Python: A Python ORM for [XTDB](https://www.xtdb.com/)
-
-<div align="center">
-
-[![Python Versions](https://img.shields.io/pypi/pyversions/xtdb)](https://pypi.org/project/xtdb/)
-[![Stable Version](https://img.shields.io/pypi/v/xtdb?label=stable)](https://pypi.org/project/xtdb/#history)
-
-[![Tests](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml/badge.svg)](https://github.com/Donnype/xtdb-py/actions/workflows/tests.yml)
-[![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/Donnype/xtdb-py/blob/main/.pre-commit-config.yaml)
-[![License](https://img.shields.io/github/license/Donnype/xtdb-py)](https://github.com/Donnype/xtdb-py/blob/main/LICENSE)
-
-</div>
+# Getting Started
 
 ## Installation
 
@@ -30,7 +17,7 @@ $ docker run -p 3000:3000 -d juxt/xtdb-standalone-rocksdb:1.21.0
 $ export XTDB_URI=http://localhost:3000/_xtdb
 ```
 
-### Using the Client
+### XTDBClient
 
 The `XTDBClient` supports the full [HTTP API spec](https://docs.xtdb.com/clients/http/).
 
@@ -67,7 +54,7 @@ Given the data from [the cities example](https://github.com/Donnype/xtdb-py/blob
 
 To see more datalog query examples, check out the [unit tests](https://github.com/Donnype/xtdb-py/blob/main/tests/test_datalog.py).
 
-### Using the ORM and Session
+### Using the ORM and XTDBSession
 
 Below is an example of how to use the ORM functionality.
 
@@ -159,3 +146,4 @@ $ make done   # Run all of the above
 
 The CI runs these checks as well.
 Check out the [project page](https://github.com/users/Donnype/projects/1) for issues and features to work on.
+

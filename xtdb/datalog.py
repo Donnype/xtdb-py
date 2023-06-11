@@ -1,3 +1,7 @@
+"""
+The Datalog module contains all logic to declaratively create XTDB queries.
+"""
+
 from typing import Any, List, Literal, Optional, Tuple, Union
 
 from xtdb.exceptions import XTDBException
