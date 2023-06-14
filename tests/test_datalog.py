@@ -8,6 +8,7 @@ from xtdb.datalog import (
     NotJoin,
     OrderBy,
     OrJoin,
+    RuleClause,
     Sample,
     Sum,
     Timeout,
@@ -284,3 +285,20 @@ def test_or_join():
 
     statement = Where("e", "xt/id") & OrJoin("e") & Where("e", "last-name", "n") & Where("e", "name", "n")
     assert statement.compile() == ":where [ (or-join [e] ) [ e :last-name n ] [ e :name n ] [ e :xt/id  ]]"
+
+
+def test_rules():
+    # From the docs
+    statement = RuleClause("adult?", "p")
+    assert statement.compile() == ":where [(adult? p)]"
+
+    statement = RuleClause("adult?", "p") & Rules(RuleClause("adult?", "p") & Where("p", "age", "a") & WherePredicate(">=", "a", 18))
+    assert statement.compile() == ":where [(adult? p)] :rules [[(adult? p) [p :age a] [(>= a 18)]]]"
+ 
+    # From the docs
+    statement = RuleClause("follow", "?e1", "?e2")
+    assert statement.compile() == ":where [(follow ?e1 ?e2)]"
+
+    statement = RuleClause("follow", "?e1", "?e2") & Rules(RuleClause("follow", "?e1", "?e2") & Where("?e1", "follow", "?e2") & Where("e1", "follow", "?e2"))
+    assert statement.compile() == ":where [(follow ?e1 ?e2)] :rules [[(follow ?e1 ?e2) [?e1 :follow ?e2]] [(follow ?e1 ?e2) [?e1 :follow ?t] (follow ?t ?e2)]]"
+

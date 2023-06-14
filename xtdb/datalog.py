@@ -248,8 +248,8 @@ class Where(Clause):
 
 class WherePredicate(Clause):
     def __init__(self, operation: str, *args, bind: Optional[str] = None):
-        self.args = args
         self.operation = operation
+        self.args = args
         self.bind = bind
 
     def compile(self, root: bool = True, *, separator=" ") -> str:
@@ -366,6 +366,30 @@ class In(QueryKey):
         nested_values = ["[" + " ".join([f'"{value}"' for value in values]) + "]" for values in self.values]
         expression = " ".join(nested_values)
         return f" :in-args [[{expression}]]"
+
+
+class RuleClause(QueryKey):
+    def __init__(self, operation: str, *args):
+        self.operation = operation
+        self.args = args
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        expression = f"({self.operation} {' '.join(self.args)})"
+
+        if root:
+            return f":where [{expression}]"
+
+        return expression
+
+
+class Rules(QueryKey):
+    def __init__(self, clauses: List[Clause]):
+        self.clauses = clauses
+
+    def compile(self, root: bool = True, *, separator=" ") -> str:
+        expression = " ".join([clause.compile(separtor=separator, root=False) for clause in self.clauses])
+
+        return f":rules [{expression}]"
 
 
 class OrderBy(QueryKey):
