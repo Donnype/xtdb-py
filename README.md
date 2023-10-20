@@ -112,14 +112,14 @@ Don't hesitate to add your own examples!
 ### Using the CLI for querying
 
 This package also comes with an easy CLI tool to query XTDB.
-To query XTDB using a plain query you can run
+Again, set the `XTDB_URI` variable in your environment first and you will be able to query XTDB as follows:
 
 ```bash
 $ echo '{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}' | python -m xtdb
 [[{"name": "fred", "xt/id": "123"}]]
 ```
 
-To use a query file the command can be modified to the following:
+To use a query from a file, run:
 
 ```bash
 $ cat query.txt
