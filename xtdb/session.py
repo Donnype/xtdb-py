@@ -136,7 +136,7 @@ class XTDBClient:
         except HTTPError as e:
             logger.exception("Request failed")
 
-            raise XTDBException from e
+            raise XTDBException(str(e)) from e
 
     def status(self) -> XTDBStatus:
         return XTDBStatus(**self._session.get(f"{self.base_url}/status").json())
