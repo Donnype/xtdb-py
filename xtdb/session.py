@@ -302,8 +302,10 @@ class XTDBClient:
 
         if isinstance(parameter, datetime):
             current_params[key] = parameter.isoformat()
-        if isinstance(parameter, (int, str, bool)):
+        elif isinstance(parameter, bool):
             current_params[key] = str(parameter).lower()
+        elif isinstance(parameter, (int, str)):
+            current_params[key] = str(parameter)
 
         return current_params
 
