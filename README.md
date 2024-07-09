@@ -39,16 +39,16 @@ $ export XTDB_URI=http://localhost:3000/_xtdb
 The `XTDBClient` supports the full [HTTP API spec](https://docs.xtdb.com/clients/http/).
 
 ```python3
->> > import os
->> > from xtdb.session import XTDBClient, Operation
->> >
->> > client = XTDBClient(os.environ["XTDB_URI"])
->> > client.submit_tx([Operation.put({"xt/id": "123", "name": "fred"})])
->> >
->> > client.query('{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}')
+>>> import os
+>>> from xtdb.session import XTDBClient, Operation
+>>>
+>>> client = XTDBClient(os.environ["XTDB_URI"])
+>>> client.submit_tx([Operation.put({"xt/id": "123", "name": "fred"})])
+>>>
+>>> client.query('{:query {:find [(pull ?e [*])] :where [[ ?e :name "fred" ]]}}')
 [[{'name': 'fred', 'xt/id': '123'}]]
->> >
->> > client.get_entity("123")
+>>>
+>>> client.get_entity("123")
 {'name': 'fred', 'xt/id': '123'}
 ```
 
